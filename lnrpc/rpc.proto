@@ -287,6 +287,13 @@ service Lightning {
         };
     }
 
+    rpc CreateMacaroon(CreateMacaroonRequest) returns (CreateMacaroonResponse) {
+        option (google.api.http) = {
+            post: "/v1/macaroons"
+            body: "*"
+        };
+    }
+
     /** lncli: `disconnect`
     DisconnectPeer attempts to disconnect one peer from another identified by a
     given pubKey. In the case that we currently have a pending or active channel
@@ -1826,3 +1833,10 @@ message ForwardingHistoryResponse {
    /// The index of the last time in the set of returned forwarding events. Can be used to seek further, pagination style.
    uint32 last_offset_index = 2 [json_name = "last_offset_index"];
 }
+
+message CreateMacaroonRequest {
+    string name = 1;
+    int64 daily_spent_amt = 2;
+}
+
+message CreateMacaroonResponse{}

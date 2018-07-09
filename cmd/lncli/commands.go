@@ -303,6 +303,20 @@ func sendMany(ctx *cli.Context) error {
 	return nil
 }
 
+var createMacaroonCommand = cli.Command {
+	Name: "macaroon",
+	Category : "Info",
+	Usage: "Create Macaroon with daily spend limit",
+	ArgsUsage: "name daily_spend_amt",
+	Action: actionDecorator(createMacaroon),
+}
+
+func createMacaroon(ctx *cli.Context) error{
+	ctxb := contest.Background()
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+}
+
 var connectCommand = cli.Command{
 	Name:      "connect",
 	Category:  "Peers",

@@ -241,6 +241,7 @@ func main() {
 		feeReportCommand,
 		updateChannelPolicyCommand,
 		forwardingHistoryCommand,
+		createMacaroonCommand,
 	}
 
 	if err := app.Run(os.Args); err != nil {
