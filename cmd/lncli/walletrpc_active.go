@@ -4,9 +4,9 @@ package main
 
 import (
 	"context"
+	"github.com/lightningnetwork/lnd/lnrpc/api/wallet"
 	"sort"
 
-	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 	"github.com/urfave/cli"
 )
 
@@ -27,12 +27,12 @@ func walletCommands() []cli.Command {
 	}
 }
 
-func getWalletClient(ctx *cli.Context) (walletrpc.WalletKitClient, func()) {
+func getWalletClient(ctx *cli.Context) (wallet.WalletKitClient, func()) {
 	conn := getClientConn(ctx, false)
 	cleanUp := func() {
 		conn.Close()
 	}
-	return walletrpc.NewWalletKitClient(conn), cleanUp
+	return wallet.NewWalletKitClient(conn), cleanUp
 }
 
 var pendingSweepsCommand = cli.Command{
@@ -53,7 +53,7 @@ func pendingSweeps(ctx *cli.Context) error {
 	client, cleanUp := getWalletClient(ctx)
 	defer cleanUp()
 
-	req := &walletrpc.PendingSweepsRequest{}
+	req := &wallet.PendingSweepsRequest{}
 	resp, err := client.PendingSweeps(ctxb, req)
 	if err != nil {
 		return err
@@ -154,7 +154,7 @@ func bumpFee(ctx *cli.Context) error {
 	client, cleanUp := getWalletClient(ctx)
 	defer cleanUp()
 
-	resp, err := client.BumpFee(context.Background(), &walletrpc.BumpFeeRequest{
+	resp, err := client.BumpFee(context.Background(), &wallet.BumpFeeRequest{
 		Outpoint:   protoOutPoint,
 		TargetConf: uint32(ctx.Uint64("conf_target")),
 		SatPerByte: uint32(ctx.Uint64("sat_per_byte")),

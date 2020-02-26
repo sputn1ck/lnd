@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"os"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/lightningnetwork/lnd/aezeed"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/keychain"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
 )
@@ -124,7 +124,7 @@ func New(chainDir string, params *chaincfg.Params, noFreelistSync bool,
 // method should be used to commit the newly generated seed, and create the
 // wallet.
 func (u *UnlockerService) GenSeed(ctx context.Context,
-	in *lnrpc.GenSeedRequest) (*lnrpc.GenSeedResponse, error) {
+	in *api.GenSeedRequest) (*api.GenSeedResponse, error) {
 
 	// Before we start, we'll ensure that the wallet hasn't already created
 	// so we don't show a *new* seed to the user if one already exists.
@@ -184,7 +184,7 @@ func (u *UnlockerService) GenSeed(ctx context.Context,
 		return nil, err
 	}
 
-	return &lnrpc.GenSeedResponse{
+	return &api.GenSeedResponse{
 		CipherSeedMnemonic: []string(mnemonic[:]),
 		EncipheredSeed:     encipheredSeed[:],
 	}, nil
@@ -193,7 +193,7 @@ func (u *UnlockerService) GenSeed(ctx context.Context,
 // extractChanBackups is a helper function that extracts the set of channel
 // backups from the proto into a format that we'll pass to higher level
 // sub-systems.
-func extractChanBackups(chanBackups *lnrpc.ChanBackupSnapshot) *ChannelsToRecover {
+func extractChanBackups(chanBackups *api.ChanBackupSnapshot) *ChannelsToRecover {
 	// If there aren't any populated channel backups, then we can exit
 	// early as there's nothing to extract.
 	if chanBackups == nil || (chanBackups.SingleChanBackups == nil &&
@@ -240,7 +240,7 @@ func extractChanBackups(chanBackups *lnrpc.ChanBackupSnapshot) *ChannelsToRecove
 // seed, then present it to the user. Once it has been verified by the user,
 // the seed can be fed into this RPC in order to commit the new wallet.
 func (u *UnlockerService) InitWallet(ctx context.Context,
-	in *lnrpc.InitWalletRequest) (*lnrpc.InitWalletResponse, error) {
+	in *api.InitWalletRequest) (*api.InitWalletResponse, error) {
 
 	// Make sure the password meets our constraints.
 	password := in.WalletPassword
@@ -304,14 +304,14 @@ func (u *UnlockerService) InitWallet(ctx context.Context,
 
 	u.InitMsgs <- initMsg
 
-	return &lnrpc.InitWalletResponse{}, nil
+	return &api.InitWalletResponse{}, nil
 }
 
 // UnlockWallet sends the password provided by the incoming UnlockWalletRequest
 // over the UnlockMsgs channel in case it successfully decrypts an existing
 // wallet found in the chain's wallet database directory.
 func (u *UnlockerService) UnlockWallet(ctx context.Context,
-	in *lnrpc.UnlockWalletRequest) (*lnrpc.UnlockWalletResponse, error) {
+	in *api.UnlockWalletRequest) (*api.UnlockWalletResponse, error) {
 
 	password := in.WalletPassword
 	recoveryWindow := uint32(in.RecoveryWindow)
@@ -360,14 +360,14 @@ func (u *UnlockerService) UnlockWallet(ctx context.Context,
 	// channel, such that it can be used by lnd to open the wallet.
 	u.UnlockMsgs <- walletUnlockMsg
 
-	return &lnrpc.UnlockWalletResponse{}, nil
+	return &api.UnlockWalletResponse{}, nil
 }
 
 // ChangePassword changes the password of the wallet and sends the new password
 // across the UnlockPasswords channel to automatically unlock the wallet if
 // successful.
 func (u *UnlockerService) ChangePassword(ctx context.Context,
-	in *lnrpc.ChangePasswordRequest) (*lnrpc.ChangePasswordResponse, error) {
+	in *api.ChangePasswordRequest) (*api.ChangePasswordResponse, error) {
 
 	netDir := btcwallet.NetworkDir(u.chainDir, u.netParams)
 	loader := wallet.NewLoader(u.netParams, netDir, u.noFreelistSync, 0)
@@ -433,7 +433,7 @@ func (u *UnlockerService) ChangePassword(ctx context.Context,
 	// automatically unlock the wallet.
 	u.UnlockMsgs <- &WalletUnlockMsg{Passphrase: in.NewPassword}
 
-	return &lnrpc.ChangePasswordResponse{}, nil
+	return &api.ChangePasswordResponse{}, nil
 }
 
 // ValidatePassword assures the password meets all of our constraints.

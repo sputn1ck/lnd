@@ -5,10 +5,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api/router"
 	"strconv"
 
 	"github.com/btcsuite/btcutil"
-	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/urfave/cli"
@@ -51,9 +51,9 @@ func queryProb(ctx *cli.Context) error {
 	conn := getClientConn(ctx, false)
 	defer conn.Close()
 
-	client := routerrpc.NewRouterClient(conn)
+	client := router.NewRouterClient(conn)
 
-	req := &routerrpc.QueryProbabilityRequest{
+	req := &router.QueryProbabilityRequest{
 		FromNode: fromNode[:],
 		ToNode:   toNode[:],
 		AmtMsat:  int64(amtMsat),

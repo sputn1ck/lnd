@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -40,7 +41,6 @@ import (
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lncfg"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
 	"github.com/lightningnetwork/lnd/macaroons"
@@ -923,7 +923,7 @@ func waitForWalletPassword(restEndpoints []net.Addr,
 		chainConfig.ChainDir, activeNetParams.Params, !cfg.SyncFreelist,
 		macaroonFiles,
 	)
-	lnrpc.RegisterWalletUnlockerServer(grpcServer, pwService)
+	api.RegisterWalletUnlockerServer(grpcServer, pwService)
 
 	// Use a WaitGroup so we can be sure the instructions on how to input the
 	// password is the last thing to be printed to the console.
@@ -950,7 +950,7 @@ func waitForWalletPassword(restEndpoints []net.Addr,
 
 	mux := proxy.NewServeMux()
 
-	err = lnrpc.RegisterWalletUnlockerHandlerFromEndpoint(
+	err = api.RegisterWalletUnlockerHandlerFromEndpoint(
 		ctx, mux, restProxyDest, restDialOpts,
 	)
 	if err != nil {

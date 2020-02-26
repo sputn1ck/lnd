@@ -5,11 +5,11 @@ package itest
 import (
 	"bytes"
 	"context"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"time"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lntest"
 	"github.com/lightningnetwork/lnd/lntest/wait"
 	"github.com/lightningnetwork/lnd/lntypes"
@@ -35,7 +35,7 @@ func testSingleHopInvoice(net *lntest.NetworkHarness, t *harnessTest) {
 	// preimage.
 	const paymentAmt = 1000
 	preimage := bytes.Repeat([]byte("A"), 32)
-	invoice := &lnrpc.Invoice{
+	invoice := &api.Invoice{
 		Memo:      "testing",
 		RPreimage: preimage,
 		Value:     paymentAmt,
@@ -62,7 +62,7 @@ func testSingleHopInvoice(net *lntest.NetworkHarness, t *harnessTest) {
 
 	// With the invoice for Bob added, send a payment towards Alice paying
 	// to the above generated invoice.
-	sendReq := &lnrpc.SendRequest{
+	sendReq := &api.SendRequest{
 		PaymentRequest: invoiceResp.PaymentRequest,
 	}
 	ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
@@ -80,7 +80,7 @@ func testSingleHopInvoice(net *lntest.NetworkHarness, t *harnessTest) {
 	}
 
 	// Bob's invoice should now be found and marked as settled.
-	payHash := &lnrpc.PaymentHash{
+	payHash := &api.PaymentHash{
 		RHash: invoiceResp.RHash,
 	}
 	ctxt, _ = context.WithTimeout(ctxt, defaultTimeout)
@@ -106,7 +106,7 @@ func testSingleHopInvoice(net *lntest.NetworkHarness, t *harnessTest) {
 	// Create another invoice for Bob, this time leaving off the preimage
 	// to one will be randomly generated. We'll test the proper
 	// encoding/decoding of the zpay32 payment requests.
-	invoice = &lnrpc.Invoice{
+	invoice = &api.Invoice{
 		Memo:  "test3",
 		Value: paymentAmt,
 	}
@@ -118,7 +118,7 @@ func testSingleHopInvoice(net *lntest.NetworkHarness, t *harnessTest) {
 
 	// Next send another payment, but this time using a zpay32 encoded
 	// invoice rather than manually specifying the payment details.
-	sendReq = &lnrpc.SendRequest{
+	sendReq = &api.SendRequest{
 		PaymentRequest: invoiceResp.PaymentRequest,
 	}
 	ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
@@ -144,7 +144,7 @@ func testSingleHopInvoice(net *lntest.NetworkHarness, t *harnessTest) {
 	keySendPreimage := lntypes.Preimage{3, 4, 5, 11}
 	keySendHash := keySendPreimage.Hash()
 
-	sendReq = &lnrpc.SendRequest{
+	sendReq = &api.SendRequest{
 		Dest:           net.Bob.PubKey[:],
 		Amt:            paymentAmt,
 		FinalCltvDelta: 40,

@@ -3,6 +3,7 @@ package walletunlocker_test
 import (
 	"bytes"
 	"context"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -15,7 +16,6 @@ import (
 	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/lightningnetwork/lnd/aezeed"
 	"github.com/lightningnetwork/lnd/keychain"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
 	"github.com/lightningnetwork/lnd/walletunlocker"
 )
@@ -82,7 +82,7 @@ func TestGenSeed(t *testing.T) {
 	// Now that the service has been created, we'll ask it to generate a
 	// new seed for us given a test passphrase.
 	aezeedPass := []byte("kek")
-	genSeedReq := &lnrpc.GenSeedRequest{
+	genSeedReq := &api.GenSeedRequest{
 		AezeedPassphrase: aezeedPass,
 		SeedEntropy:      testEntropy[:],
 	}
@@ -123,7 +123,7 @@ func TestGenSeedGenerateEntropy(t *testing.T) {
 	// Now that the service has been created, we'll ask it to generate a
 	// new seed for us given a test passphrase. Note that we don't actually
 	aezeedPass := []byte("kek")
-	genSeedReq := &lnrpc.GenSeedRequest{
+	genSeedReq := &api.GenSeedRequest{
 		AezeedPassphrase: aezeedPass,
 	}
 
@@ -164,7 +164,7 @@ func TestGenSeedInvalidEntropy(t *testing.T) {
 	// new seed for us given a test passphrase. However, we'll be using an
 	// invalid set of entropy that's 55 bytes, instead of 15 bytes.
 	aezeedPass := []byte("kek")
-	genSeedReq := &lnrpc.GenSeedRequest{
+	genSeedReq := &api.GenSeedRequest{
 		AezeedPassphrase: aezeedPass,
 		SeedEntropy:      bytes.Repeat([]byte("a"), 55),
 	}
@@ -220,7 +220,7 @@ func TestInitWallet(t *testing.T) {
 	// seed, then send over the initialization information over the init
 	// channel.
 	ctx := context.Background()
-	req := &lnrpc.InitWalletRequest{
+	req := &api.InitWalletRequest{
 		WalletPassword:     testPassword,
 		CipherSeedMnemonic: []string(mnemonic[:]),
 		AezeedPassphrase:   pass,
@@ -276,7 +276,7 @@ func TestInitWallet(t *testing.T) {
 
 	// Similarly, if we try to do GenSeed again, we should get an error as
 	// the wallet already exists.
-	_, err = service.GenSeed(ctx, &lnrpc.GenSeedRequest{})
+	_, err = service.GenSeed(ctx, &api.GenSeedRequest{})
 	if err == nil {
 		t.Fatalf("seed generation should have failed")
 	}
@@ -301,7 +301,7 @@ func TestCreateWalletInvalidEntropy(t *testing.T) {
 
 	// We'll attempt to init the wallet with an invalid cipher seed and
 	// passphrase.
-	req := &lnrpc.InitWalletRequest{
+	req := &api.InitWalletRequest{
 		WalletPassword:     testPassword,
 		CipherSeedMnemonic: []string{"invalid", "seed"},
 		AezeedPassphrase:   []byte("fake pass"),
@@ -333,7 +333,7 @@ func TestUnlockWallet(t *testing.T) {
 	service := walletunlocker.New(testDir, testNetParams, true, nil)
 
 	ctx := context.Background()
-	req := &lnrpc.UnlockWalletRequest{
+	req := &api.UnlockWalletRequest{
 		WalletPassword: testPassword,
 		RecoveryWindow: int32(testRecoveryWindow),
 	}
@@ -348,7 +348,7 @@ func TestUnlockWallet(t *testing.T) {
 	createTestWallet(t, testDir, testNetParams)
 
 	// Try unlocking this wallet with the wrong passphrase.
-	wrongReq := &lnrpc.UnlockWalletRequest{
+	wrongReq := &api.UnlockWalletRequest{
 		WalletPassword: []byte("wrong-ofc"),
 	}
 	_, err = service.UnlockWallet(ctx, wrongReq)
@@ -409,7 +409,7 @@ func TestChangeWalletPassword(t *testing.T) {
 	ctx := context.Background()
 	newPassword := []byte("hunter2???")
 
-	req := &lnrpc.ChangePasswordRequest{
+	req := &api.ChangePasswordRequest{
 		CurrentPassword: testPassword,
 		NewPassword:     newPassword,
 	}
@@ -425,7 +425,7 @@ func TestChangeWalletPassword(t *testing.T) {
 
 	// Attempting to change the wallet's password using an incorrect
 	// current password should fail.
-	wrongReq := &lnrpc.ChangePasswordRequest{
+	wrongReq := &api.ChangePasswordRequest{
 		CurrentPassword: []byte("wrong-ofc"),
 		NewPassword:     newPassword,
 	}

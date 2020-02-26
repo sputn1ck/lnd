@@ -1,11 +1,11 @@
 syntax = "proto3";
 
 import "rpc.proto";
-import "signrpc/signer.proto";
+import "sign/signer.proto";
 
 package walletrpc;
 
-option go_package = "github.com/lightningnetwork/lnd/lnrpc/walletrpc";
+option go_package = "github.com/lightningnetwork/lnd/lnrpc/api/wallet";
 
 message KeyReq {
     /**
@@ -59,7 +59,7 @@ message SendOutputsRequest {
     /**
     A slice of the outputs that should be created in the transaction produced.
     */
-    repeated signrpc.TxOut outputs = 2;
+    repeated sign.TxOut outputs = 2;
 }
 message SendOutputsResponse {
     /**
@@ -244,13 +244,13 @@ service WalletKit {
     (account in BIP43) specified. This method should return the next external
     child within this branch.
     */
-    rpc DeriveNextKey(KeyReq) returns (signrpc.KeyDescriptor);
+    rpc DeriveNextKey(KeyReq) returns (sign.KeyDescriptor);
 
     /**
     DeriveKey attempts to derive an arbitrary key specified by the passed
     KeyLocator. 
     */
-    rpc DeriveKey(signrpc.KeyLocator) returns (signrpc.KeyDescriptor);
+    rpc DeriveKey(sign.KeyLocator) returns (sign.KeyDescriptor);
 
     /**
     NextAddr returns the next unused address within the wallet.

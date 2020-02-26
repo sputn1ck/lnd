@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -17,7 +18,6 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/lncfg"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/macaroons"
 	"github.com/urfave/cli"
 
@@ -48,24 +48,24 @@ func fatal(err error) {
 	os.Exit(1)
 }
 
-func getWalletUnlockerClient(ctx *cli.Context) (lnrpc.WalletUnlockerClient, func()) {
+func getWalletUnlockerClient(ctx *cli.Context) (api.WalletUnlockerClient, func()) {
 	conn := getClientConn(ctx, true)
 
 	cleanUp := func() {
 		conn.Close()
 	}
 
-	return lnrpc.NewWalletUnlockerClient(conn), cleanUp
+	return api.NewWalletUnlockerClient(conn), cleanUp
 }
 
-func getClient(ctx *cli.Context) (lnrpc.LightningClient, func()) {
+func getClient(ctx *cli.Context) (api.LightningClient, func()) {
 	conn := getClientConn(ctx, false)
 
 	cleanUp := func() {
 		conn.Close()
 	}
 
-	return lnrpc.NewLightningClient(conn), cleanUp
+	return api.NewLightningClient(conn), cleanUp
 }
 
 func getClientConn(ctx *cli.Context, skipMacaroons bool) *grpc.ClientConn {

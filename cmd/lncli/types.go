@@ -4,18 +4,18 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"strconv"
 	"strings"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/lightningnetwork/lnd/lnrpc"
 )
 
 // OutPoint displays an outpoint string in the form "<txid>:<output-index>".
 type OutPoint string
 
 // NewOutPointFromProto formats the lnrpc.OutPoint into an OutPoint for display.
-func NewOutPointFromProto(op *lnrpc.OutPoint) OutPoint {
+func NewOutPointFromProto(op *api.OutPoint) OutPoint {
 	var hash chainhash.Hash
 	copy(hash[:], op.TxidBytes)
 	return OutPoint(fmt.Sprintf("%v:%d", hash, op.OutputIndex))
@@ -23,7 +23,7 @@ func NewOutPointFromProto(op *lnrpc.OutPoint) OutPoint {
 
 // NewProtoOutPoint parses an OutPoint into its corresponding lnrpc.OutPoint
 // type.
-func NewProtoOutPoint(op string) (*lnrpc.OutPoint, error) {
+func NewProtoOutPoint(op string) (*api.OutPoint, error) {
 	parts := strings.Split(op, ":")
 	if len(parts) != 2 {
 		return nil, errors.New("outpoint should be of the form txid:index")
@@ -36,7 +36,7 @@ func NewProtoOutPoint(op string) (*lnrpc.OutPoint, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid output index: %v", err)
 	}
-	return &lnrpc.OutPoint{
+	return &api.OutPoint{
 		TxidStr:     txid,
 		OutputIndex: uint32(outputIndex),
 	}, nil
@@ -45,18 +45,18 @@ func NewProtoOutPoint(op string) (*lnrpc.OutPoint, error) {
 // Utxo displays information about an unspent output, including its address,
 // amount, pkscript, and confirmations.
 type Utxo struct {
-	Type          lnrpc.AddressType `json:"address_type"`
-	Address       string            `json:"address"`
-	AmountSat     int64             `json:"amount_sat"`
-	PkScript      string            `json:"pk_script"`
-	OutPoint      OutPoint          `json:"outpoint"`
-	Confirmations int64             `json:"confirmations"`
+	Type          api.AddressType `json:"address_type"`
+	Address       string          `json:"address"`
+	AmountSat     int64           `json:"amount_sat"`
+	PkScript      string          `json:"pk_script"`
+	OutPoint      OutPoint        `json:"outpoint"`
+	Confirmations int64           `json:"confirmations"`
 }
 
 // NewUtxoFromProto creates a display Utxo from the Utxo proto. This filters out
 // the raw txid bytes from the provided outpoint, which will otherwise be
 // printed in base64.
-func NewUtxoFromProto(utxo *lnrpc.Utxo) *Utxo {
+func NewUtxoFromProto(utxo *api.Utxo) *Utxo {
 	return &Utxo{
 		Type:          utxo.Type,
 		Address:       utxo.Address,

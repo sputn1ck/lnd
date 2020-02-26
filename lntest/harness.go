@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -20,7 +21,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lntest/wait"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"google.golang.org/grpc/grpclog"
@@ -167,10 +167,10 @@ func (n *NetworkHarness) SetUp(lndArgs []string) error {
 	// Load up the wallets of the seeder nodes with 10 outputs of 1 BTC
 	// each.
 	ctxb := context.Background()
-	addrReq := &lnrpc.NewAddressRequest{
-		Type: lnrpc.AddressType_WITNESS_PUBKEY_HASH,
+	addrReq := &api.NewAddressRequest{
+		Type: api.AddressType_WITNESS_PUBKEY_HASH,
 	}
-	clients := []lnrpc.LightningClient{n.Alice, n.Bob}
+	clients := []api.LightningClient{n.Alice, n.Bob}
 	for _, client := range clients {
 		for i := 0; i < 10; i++ {
 			resp, err := client.NewAddress(ctxb, addrReq)
@@ -210,7 +210,7 @@ func (n *NetworkHarness) SetUp(lndArgs []string) error {
 
 	// Now block until both wallets have fully synced up.
 	expectedBalance := int64(btcutil.SatoshiPerBitcoin * 10)
-	balReq := &lnrpc.WalletBalanceRequest{}
+	balReq := &api.WalletBalanceRequest{}
 	balanceTicker := time.Tick(time.Millisecond * 50)
 	balanceTimeout := time.After(time.Second * 30)
 out:
@@ -277,7 +277,7 @@ func (n *NetworkHarness) NewNodeWithSeed(name string, extraArgs []string,
 
 	// Create a request to generate a new aezeed. The new seed will have the
 	// same password as the internal wallet.
-	genSeedReq := &lnrpc.GenSeedRequest{
+	genSeedReq := &api.GenSeedRequest{
 		AezeedPassphrase: password,
 	}
 
@@ -289,7 +289,7 @@ func (n *NetworkHarness) NewNodeWithSeed(name string, extraArgs []string,
 
 	// With the seed created, construct the init request to the node,
 	// including the newly generated seed.
-	initReq := &lnrpc.InitWalletRequest{
+	initReq := &api.InitWalletRequest{
 		WalletPassword:     password,
 		CipherSeedMnemonic: genSeedResp.CipherSeedMnemonic,
 		AezeedPassphrase:   password,
@@ -316,14 +316,14 @@ func (n *NetworkHarness) NewNodeWithSeed(name string, extraArgs []string,
 // be used for regular rpc operations.
 func (n *NetworkHarness) RestoreNodeWithSeed(name string, extraArgs []string,
 	password []byte, mnemonic []string, recoveryWindow int32,
-	chanBackups *lnrpc.ChanBackupSnapshot) (*HarnessNode, error) {
+	chanBackups *api.ChanBackupSnapshot) (*HarnessNode, error) {
 
 	node, err := n.newNode(name, extraArgs, true, password)
 	if err != nil {
 		return nil, err
 	}
 
-	initReq := &lnrpc.InitWalletRequest{
+	initReq := &api.InitWalletRequest{
 		WalletPassword:     password,
 		CipherSeedMnemonic: mnemonic,
 		AezeedPassphrase:   password,
@@ -396,7 +396,7 @@ func (n *NetworkHarness) RegisterNode(node *HarnessNode) {
 }
 
 func (n *NetworkHarness) connect(ctx context.Context,
-	req *lnrpc.ConnectPeerRequest, a *HarnessNode) error {
+	req *api.ConnectPeerRequest, a *HarnessNode) error {
 
 	syncTimeout := time.After(15 * time.Second)
 tryconnect:
@@ -430,13 +430,13 @@ func (n *NetworkHarness) EnsureConnected(ctx context.Context, a, b *HarnessNode)
 
 	tryConnect := func(a, b *HarnessNode) error {
 		ctxt, _ := context.WithTimeout(ctx, 15*time.Second)
-		bInfo, err := b.GetInfo(ctxt, &lnrpc.GetInfoRequest{})
+		bInfo, err := b.GetInfo(ctxt, &api.GetInfoRequest{})
 		if err != nil {
 			return err
 		}
 
-		req := &lnrpc.ConnectPeerRequest{
-			Addr: &lnrpc.LightningAddress{
+		req := &api.ConnectPeerRequest{
+			Addr: &api.LightningAddress{
 				Pubkey: bInfo.IdentityPubkey,
 				Host:   b.Cfg.P2PAddr(),
 			},
@@ -504,7 +504,7 @@ func (n *NetworkHarness) EnsureConnected(ctx context.Context, a, b *HarnessNode)
 		// then we can exit early as the connection has been fully
 		// established.
 		ctxt, _ := context.WithTimeout(ctx, 15*time.Second)
-		resp, err := b.ListPeers(ctxt, &lnrpc.ListPeersRequest{})
+		resp, err := b.ListPeers(ctxt, &api.ListPeersRequest{})
 		if err != nil {
 			return false
 		}
@@ -535,13 +535,13 @@ func (n *NetworkHarness) EnsureConnected(ctx context.Context, a, b *HarnessNode)
 // NOTE: This function may block for up to 15-seconds as it will not return
 // until the new connection is detected as being known to both nodes.
 func (n *NetworkHarness) ConnectNodes(ctx context.Context, a, b *HarnessNode) error {
-	bobInfo, err := b.GetInfo(ctx, &lnrpc.GetInfoRequest{})
+	bobInfo, err := b.GetInfo(ctx, &api.GetInfoRequest{})
 	if err != nil {
 		return err
 	}
 
-	req := &lnrpc.ConnectPeerRequest{
-		Addr: &lnrpc.LightningAddress{
+	req := &api.ConnectPeerRequest{
+		Addr: &api.LightningAddress{
 			Pubkey: bobInfo.IdentityPubkey,
 			Host:   b.Cfg.P2PAddr(),
 		},
@@ -555,7 +555,7 @@ func (n *NetworkHarness) ConnectNodes(ctx context.Context, a, b *HarnessNode) er
 		// If node B is seen in the ListPeers response from node A,
 		// then we can exit early as the connection has been fully
 		// established.
-		resp, err := a.ListPeers(ctx, &lnrpc.ListPeersRequest{})
+		resp, err := a.ListPeers(ctx, &api.ListPeersRequest{})
 		if err != nil {
 			return false
 		}
@@ -578,12 +578,12 @@ func (n *NetworkHarness) ConnectNodes(ctx context.Context, a, b *HarnessNode) er
 // DisconnectNodes disconnects node a from node b by sending RPC message
 // from a node to b node
 func (n *NetworkHarness) DisconnectNodes(ctx context.Context, a, b *HarnessNode) error {
-	bobInfo, err := b.GetInfo(ctx, &lnrpc.GetInfoRequest{})
+	bobInfo, err := b.GetInfo(ctx, &api.GetInfoRequest{})
 	if err != nil {
 		return err
 	}
 
-	req := &lnrpc.DisconnectPeerRequest{
+	req := &api.DisconnectPeerRequest{
 		PubKey: bobInfo.IdentityPubkey,
 	}
 
@@ -607,7 +607,7 @@ func (n *NetworkHarness) DisconnectNodes(ctx context.Context, a, b *HarnessNode)
 // pass a set of SCBs to pass in via the Unlock method allowing them to restore
 // channels during restart.
 func (n *NetworkHarness) RestartNode(node *HarnessNode, callback func() error,
-	chanBackups ...*lnrpc.ChanBackupSnapshot) error {
+	chanBackups ...*api.ChanBackupSnapshot) error {
 
 	if err := node.stop(); err != nil {
 		return err
@@ -631,7 +631,7 @@ func (n *NetworkHarness) RestartNode(node *HarnessNode, callback func() error,
 
 	// Otherwise, we'll unlock the wallet, then complete the final steps
 	// for the node initialization process.
-	unlockReq := &lnrpc.UnlockWalletRequest{
+	unlockReq := &api.UnlockWalletRequest{
 		WalletPassword: node.Cfg.Password,
 	}
 	if len(chanBackups) != 0 {
@@ -854,7 +854,7 @@ type OpenChannelParams struct {
 
 	// FundingShim is an optional funding shim that the caller can specify
 	// in order to modify the channel funding workflow.
-	FundingShim *lnrpc.FundingShim
+	FundingShim *api.FundingShim
 }
 
 // OpenChannel attempts to open a channel between srcNode and destNode with the
@@ -864,7 +864,7 @@ type OpenChannelParams struct {
 // should fund the channel with confirmed outputs or not.
 func (n *NetworkHarness) OpenChannel(ctx context.Context,
 	srcNode, destNode *HarnessNode, p OpenChannelParams) (
-	lnrpc.Lightning_OpenChannelClient, error) {
+	api.Lightning_OpenChannelClient, error) {
 
 	// Wait until srcNode and destNode have the latest chain synced.
 	// Otherwise, we may run into a check within the funding manager that
@@ -882,7 +882,7 @@ func (n *NetworkHarness) OpenChannel(ctx context.Context,
 		minConfs = 0
 	}
 
-	openReq := &lnrpc.OpenChannelRequest{
+	openReq := &api.OpenChannelRequest{
 		NodePubkey:         destNode.PubKey[:],
 		LocalFundingAmount: int64(p.Amt),
 		PushSat:            int64(p.PushAmt),
@@ -910,7 +910,7 @@ func (n *NetworkHarness) OpenChannel(ctx context.Context,
 			errChan <- err
 			return
 		}
-		if _, ok := resp.Update.(*lnrpc.OpenStatusUpdate_ChanPending); !ok {
+		if _, ok := resp.Update.(*api.OpenStatusUpdate_ChanPending); !ok {
 			errChan <- fmt.Errorf("expected channel pending update, "+
 				"instead got %v", resp)
 			return
@@ -936,7 +936,7 @@ func (n *NetworkHarness) OpenChannel(ctx context.Context,
 // received, an error is returned.
 func (n *NetworkHarness) OpenPendingChannel(ctx context.Context,
 	srcNode, destNode *HarnessNode, amt btcutil.Amount,
-	pushAmt btcutil.Amount) (*lnrpc.PendingUpdate, error) {
+	pushAmt btcutil.Amount) (*api.PendingUpdate, error) {
 
 	// Wait until srcNode and destNode have blockchain synced
 	if err := srcNode.WaitForBlockchainSync(ctx); err != nil {
@@ -946,7 +946,7 @@ func (n *NetworkHarness) OpenPendingChannel(ctx context.Context,
 		return nil, fmt.Errorf("Unable to sync destNode chain: %v", err)
 	}
 
-	openReq := &lnrpc.OpenChannelRequest{
+	openReq := &api.OpenChannelRequest{
 		NodePubkey:         destNode.PubKey[:],
 		LocalFundingAmount: int64(amt),
 		PushSat:            int64(pushAmt),
@@ -959,7 +959,7 @@ func (n *NetworkHarness) OpenPendingChannel(ctx context.Context,
 			"alice and bob: %v", err)
 	}
 
-	chanPending := make(chan *lnrpc.PendingUpdate)
+	chanPending := make(chan *api.PendingUpdate)
 	errChan := make(chan error)
 	go func() {
 		// Consume the "channel pending" update. This waits until the node
@@ -970,7 +970,7 @@ func (n *NetworkHarness) OpenPendingChannel(ctx context.Context,
 			errChan <- err
 			return
 		}
-		pendingResp, ok := resp.Update.(*lnrpc.OpenStatusUpdate_ChanPending)
+		pendingResp, ok := resp.Update.(*api.OpenStatusUpdate_ChanPending)
 		if !ok {
 			errChan <- fmt.Errorf("expected channel pending update, "+
 				"instead got %v", resp)
@@ -996,17 +996,17 @@ func (n *NetworkHarness) OpenPendingChannel(ctx context.Context,
 // has a timeout, then if the timeout is reached before the channel has been
 // opened, then an error is returned.
 func (n *NetworkHarness) WaitForChannelOpen(ctx context.Context,
-	openChanStream lnrpc.Lightning_OpenChannelClient) (*lnrpc.ChannelPoint, error) {
+	openChanStream api.Lightning_OpenChannelClient) (*api.ChannelPoint, error) {
 
 	errChan := make(chan error)
-	respChan := make(chan *lnrpc.ChannelPoint)
+	respChan := make(chan *api.ChannelPoint)
 	go func() {
 		resp, err := openChanStream.Recv()
 		if err != nil {
 			errChan <- fmt.Errorf("unable to read rpc resp: %v", err)
 			return
 		}
-		fundingResp, ok := resp.Update.(*lnrpc.OpenStatusUpdate_ChanOpen)
+		fundingResp, ok := resp.Update.(*api.OpenStatusUpdate_ChanOpen)
 		if !ok {
 			errChan <- fmt.Errorf("expected channel open update, "+
 				"instead got %v", resp)
@@ -1032,8 +1032,8 @@ func (n *NetworkHarness) WaitForChannelOpen(ctx context.Context,
 // has a timeout, an error is returned if that timeout is reached before the
 // channel close is pending.
 func (n *NetworkHarness) CloseChannel(ctx context.Context,
-	lnNode *HarnessNode, cp *lnrpc.ChannelPoint,
-	force bool) (lnrpc.Lightning_CloseChannelClient, *chainhash.Hash, error) {
+	lnNode *HarnessNode, cp *api.ChannelPoint,
+	force bool) (api.Lightning_CloseChannelClient, *chainhash.Hash, error) {
 
 	// Create a channel outpoint that we can use to compare to channels
 	// from the ListChannelsResponse.
@@ -1054,13 +1054,13 @@ func (n *NetworkHarness) CloseChannel(ctx context.Context,
 	// performing a cooperative channel closure.
 	if !force {
 		timeout := time.Second * 15
-		listReq := &lnrpc.ListChannelsRequest{}
+		listReq := &api.ListChannelsRequest{}
 
 		// We define two helper functions, one two locate a particular
 		// channel, and the other to check if a channel is active or
 		// not.
 		filterChannel := func(node *HarnessNode,
-			op wire.OutPoint) (*lnrpc.Channel, error) {
+			op wire.OutPoint) (*api.Channel, error) {
 			listResp, err := node.ListChannels(ctx, listReq)
 			if err != nil {
 				return nil, err
@@ -1110,7 +1110,7 @@ func (n *NetworkHarness) CloseChannel(ctx context.Context,
 		}
 	}
 
-	closeReq := &lnrpc.CloseChannelRequest{
+	closeReq := &api.CloseChannelRequest{
 		ChannelPoint: cp,
 		Force:        force,
 	}
@@ -1130,7 +1130,7 @@ func (n *NetworkHarness) CloseChannel(ctx context.Context,
 			errChan <- err
 			return
 		}
-		pendingClose, ok := closeResp.Update.(*lnrpc.CloseStatusUpdate_ClosePending)
+		pendingClose, ok := closeResp.Update.(*api.CloseStatusUpdate_ClosePending)
 		if !ok {
 			errChan <- fmt.Errorf("expected channel close update, "+
 				"instead got %v", pendingClose)
@@ -1167,10 +1167,10 @@ func (n *NetworkHarness) CloseChannel(ctx context.Context,
 // passed context has a timeout, then if the timeout is reached before the
 // notification is received then an error is returned.
 func (n *NetworkHarness) WaitForChannelClose(ctx context.Context,
-	closeChanStream lnrpc.Lightning_CloseChannelClient) (*chainhash.Hash, error) {
+	closeChanStream api.Lightning_CloseChannelClient) (*chainhash.Hash, error) {
 
 	errChan := make(chan error)
-	updateChan := make(chan *lnrpc.CloseStatusUpdate_ChanClose)
+	updateChan := make(chan *api.CloseStatusUpdate_ChanClose)
 	go func() {
 		closeResp, err := closeChanStream.Recv()
 		if err != nil {
@@ -1178,7 +1178,7 @@ func (n *NetworkHarness) WaitForChannelClose(ctx context.Context,
 			return
 		}
 
-		closeFin, ok := closeResp.Update.(*lnrpc.CloseStatusUpdate_ChanClose)
+		closeFin, ok := closeResp.Update.(*api.CloseStatusUpdate_ChanClose)
 		if !ok {
 			errChan <- fmt.Errorf("expected channel close update, "+
 				"instead got %v", closeFin)
@@ -1205,7 +1205,7 @@ func (n *NetworkHarness) WaitForChannelClose(ctx context.Context,
 func (n *NetworkHarness) AssertChannelExists(ctx context.Context,
 	node *HarnessNode, chanPoint *wire.OutPoint) error {
 
-	req := &lnrpc.ListChannelsRequest{}
+	req := &api.ListChannelsRequest{}
 
 	return wait.NoError(func() error {
 		resp, err := node.ListChannels(ctx, req)
@@ -1251,7 +1251,7 @@ func (n *NetworkHarness) SendCoins(ctx context.Context, amt btcutil.Amount,
 	target *HarnessNode) error {
 
 	return n.sendCoins(
-		ctx, amt, target, lnrpc.AddressType_WITNESS_PUBKEY_HASH,
+		ctx, amt, target, api.AddressType_WITNESS_PUBKEY_HASH,
 		true,
 	)
 }
@@ -1263,7 +1263,7 @@ func (n *NetworkHarness) SendCoinsUnconfirmed(ctx context.Context,
 	amt btcutil.Amount, target *HarnessNode) error {
 
 	return n.sendCoins(
-		ctx, amt, target, lnrpc.AddressType_WITNESS_PUBKEY_HASH,
+		ctx, amt, target, api.AddressType_WITNESS_PUBKEY_HASH,
 		false,
 	)
 }
@@ -1274,7 +1274,7 @@ func (n *NetworkHarness) SendCoinsNP2WKH(ctx context.Context,
 	amt btcutil.Amount, target *HarnessNode) error {
 
 	return n.sendCoins(
-		ctx, amt, target, lnrpc.AddressType_NESTED_PUBKEY_HASH,
+		ctx, amt, target, api.AddressType_NESTED_PUBKEY_HASH,
 		true,
 	)
 }
@@ -1283,10 +1283,10 @@ func (n *NetworkHarness) SendCoinsNP2WKH(ctx context.Context,
 // targeted lightning node. The confirmed boolean indicates whether the
 // transaction that pays to the target should confirm.
 func (n *NetworkHarness) sendCoins(ctx context.Context, amt btcutil.Amount,
-	target *HarnessNode, addrType lnrpc.AddressType,
+	target *HarnessNode, addrType api.AddressType,
 	confirmed bool) error {
 
-	balReq := &lnrpc.WalletBalanceRequest{}
+	balReq := &api.WalletBalanceRequest{}
 	initialBalance, err := target.WalletBalance(ctx, balReq)
 	if err != nil {
 		return err
@@ -1295,7 +1295,7 @@ func (n *NetworkHarness) sendCoins(ctx context.Context, amt btcutil.Amount,
 	// First, obtain an address from the target lightning node, preferring
 	// to receive a p2wkh address s.t the output can immediately be used as
 	// an input to a funding transaction.
-	addrReq := &lnrpc.NewAddressRequest{
+	addrReq := &api.NewAddressRequest{
 		Type: addrType,
 	}
 	resp, err := target.NewAddress(ctx, addrReq)
@@ -1335,7 +1335,7 @@ func (n *NetworkHarness) sendCoins(ctx context.Context, amt btcutil.Amount,
 			return nil
 		}
 
-		req := &lnrpc.ListUnspentRequest{}
+		req := &api.ListUnspentRequest{}
 		resp, err := target.ListUnspent(ctx, req)
 		if err != nil {
 			return err

@@ -6,6 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
+	. "github.com/lightningnetwork/lnd/lnrpc/api/router"
+
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -647,7 +650,7 @@ func (s *Server) trackPayment(paymentHash lntypes.Hash,
 
 		// Marshal our list of HTLCs that have been tried for this
 		// payment.
-		htlcs := make([]*lnrpc.HTLCAttempt, 0, len(result.HTLCs))
+		htlcs := make([]*api.HTLCAttempt, 0, len(result.HTLCs))
 		for _, dbHtlc := range result.HTLCs {
 			htlc, err := router.MarshalHTLCAttempt(dbHtlc)
 			if err != nil {

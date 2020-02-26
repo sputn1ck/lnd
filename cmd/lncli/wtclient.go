@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api/wtclient"
 	"strings"
 
-	"github.com/lightningnetwork/lnd/lnrpc/wtclientrpc"
 	"github.com/urfave/cli"
 )
 
@@ -32,12 +32,12 @@ func wtclientCommands() []cli.Command {
 
 // getWtclient initializes a connection to the watchtower client RPC in order to
 // interact with it.
-func getWtclient(ctx *cli.Context) (wtclientrpc.WatchtowerClientClient, func()) {
+func getWtclient(ctx *cli.Context) (wtclient.WatchtowerClientClient, func()) {
 	conn := getClientConn(ctx, false)
 	cleanUp := func() {
 		conn.Close()
 	}
-	return wtclientrpc.NewWatchtowerClientClient(conn), cleanUp
+	return wtclient.NewWatchtowerClientClient(conn), cleanUp
 }
 
 var addTowerCommand = cli.Command{
@@ -70,7 +70,7 @@ func addTower(ctx *cli.Context) error {
 	client, cleanUp := getWtclient(ctx)
 	defer cleanUp()
 
-	req := &wtclientrpc.AddTowerRequest{
+	req := &wtclient.AddTowerRequest{
 		Pubkey:  pubKey,
 		Address: address,
 	}
@@ -126,7 +126,7 @@ func removeTower(ctx *cli.Context) error {
 	client, cleanUp := getWtclient(ctx)
 	defer cleanUp()
 
-	req := &wtclientrpc.RemoveTowerRequest{
+	req := &wtclient.RemoveTowerRequest{
 		Pubkey:  pubKey,
 		Address: address,
 	}
@@ -162,7 +162,7 @@ func listTowers(ctx *cli.Context) error {
 	client, cleanUp := getWtclient(ctx)
 	defer cleanUp()
 
-	req := &wtclientrpc.ListTowersRequest{
+	req := &wtclient.ListTowersRequest{
 		IncludeSessions: ctx.Bool("include_sessions"),
 	}
 	resp, err := client.ListTowers(context.Background(), req)
@@ -207,7 +207,7 @@ func getTower(ctx *cli.Context) error {
 	client, cleanUp := getWtclient(ctx)
 	defer cleanUp()
 
-	req := &wtclientrpc.GetTowerInfoRequest{
+	req := &wtclient.GetTowerInfoRequest{
 		Pubkey:          pubKey,
 		IncludeSessions: ctx.Bool("include_sessions"),
 	}
@@ -236,7 +236,7 @@ func stats(ctx *cli.Context) error {
 	client, cleanUp := getWtclient(ctx)
 	defer cleanUp()
 
-	req := &wtclientrpc.StatsRequest{}
+	req := &wtclient.StatsRequest{}
 	resp, err := client.Stats(context.Background(), req)
 	if err != nil {
 		return err
@@ -262,7 +262,7 @@ func policy(ctx *cli.Context) error {
 	client, cleanUp := getWtclient(ctx)
 	defer cleanUp()
 
-	req := &wtclientrpc.PolicyRequest{}
+	req := &wtclient.PolicyRequest{}
 	resp, err := client.Policy(context.Background(), req)
 	if err != nil {
 		return err

@@ -1,11 +1,10 @@
 syntax = "proto3";
 
-import "google/api/annotations.proto";
 import "rpc.proto";
 
-package invoicesrpc;
+package invoices;
 
-option go_package = "github.com/lightningnetwork/lnd/lnrpc/invoicesrpc";
+option go_package = "github.com/lightningnetwork/lnd/lnrpc/api/invoices";
 
 // Invoices is a service that can be used to create, accept, settle and cancel
 // invoices.

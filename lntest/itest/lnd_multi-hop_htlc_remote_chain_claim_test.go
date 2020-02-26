@@ -5,13 +5,13 @@ package itest
 import (
 	"context"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
+	"github.com/lightningnetwork/lnd/lnrpc/api/invoices"
 	"time"
 
 	"github.com/btcsuite/btcd/wire"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/lnd"
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
 	"github.com/lightningnetwork/lnd/lntest"
 	"github.com/lightningnetwork/lnd/lntest/wait"
 	"github.com/lightningnetwork/lnd/lntypes"
@@ -40,7 +40,7 @@ func testMultiHopHtlcRemoteChainClaim(net *lntest.NetworkHarness, t *harnessTest
 	const invoiceAmt = 100000
 	preimage := lntypes.Preimage{1, 2, 5}
 	payHash := preimage.Hash()
-	invoiceReq := &invoicesrpc.AddHoldInvoiceRequest{
+	invoiceReq := &invoices.AddHoldInvoiceRequest{
 		Value:      invoiceAmt,
 		CltvExpiry: 40,
 		Hash:       payHash[:],
@@ -62,7 +62,7 @@ func testMultiHopHtlcRemoteChainClaim(net *lntest.NetworkHarness, t *harnessTest
 	if err != nil {
 		t.Fatalf("unable to create payment stream for alice: %v", err)
 	}
-	err = alicePayStream.Send(&lnrpc.SendRequest{
+	err = alicePayStream.Send(&api.SendRequest{
 		PaymentRequest: carolInvoice.PaymentRequest,
 	})
 	if err != nil {
@@ -130,7 +130,7 @@ func testMultiHopHtlcRemoteChainClaim(net *lntest.NetworkHarness, t *harnessTest
 	// channel arbitrator won't go to chain.
 	ctx, cancel = context.WithTimeout(ctxb, defaultTimeout)
 	defer cancel()
-	_, err = carol.SettleInvoice(ctx, &invoicesrpc.SettleInvoiceMsg{
+	_, err = carol.SettleInvoice(ctx, &invoices.SettleInvoiceMsg{
 		Preimage: preimage[:],
 	})
 	if err != nil {
@@ -252,7 +252,7 @@ func testMultiHopHtlcRemoteChainClaim(net *lntest.NetworkHarness, t *harnessTest
 	// Now that the sweeping transaction has been confirmed, Bob should now
 	// recognize that all contracts have been fully resolved, and show no
 	// pending close channels.
-	pendingChansRequest := &lnrpc.PendingChannelsRequest{}
+	pendingChansRequest := &api.PendingChannelsRequest{}
 	err = wait.Predicate(func() bool {
 		ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
 		pendingChanResp, err := net.Bob.PendingChannels(
@@ -291,7 +291,7 @@ func testMultiHopHtlcRemoteChainClaim(net *lntest.NetworkHarness, t *harnessTest
 	block = mineBlocks(t, net, 1, 1)[0]
 	assertTxInBlock(t, block, carolSweep)
 
-	pendingChansRequest = &lnrpc.PendingChannelsRequest{}
+	pendingChansRequest = &api.PendingChannelsRequest{}
 	err = wait.Predicate(func() bool {
 		ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
 		pendingChanResp, err := carol.PendingChannels(
@@ -316,7 +316,7 @@ func testMultiHopHtlcRemoteChainClaim(net *lntest.NetworkHarness, t *harnessTest
 
 	// The invoice should show as settled for Carol, indicating that it was
 	// swept on-chain.
-	invoicesReq := &lnrpc.ListInvoiceRequest{}
+	invoicesReq := &api.ListInvoiceRequest{}
 	invoicesResp, err := carol.ListInvoices(ctxb, invoicesReq)
 	if err != nil {
 		t.Fatalf("unable to retrieve invoices: %v", err)
@@ -325,7 +325,7 @@ func testMultiHopHtlcRemoteChainClaim(net *lntest.NetworkHarness, t *harnessTest
 		t.Fatalf("expected 1 invoice, got %d", len(invoicesResp.Invoices))
 	}
 	invoice := invoicesResp.Invoices[0]
-	if invoice.State != lnrpc.Invoice_SETTLED {
+	if invoice.State != api.Invoice_SETTLED {
 		t.Fatalf("expected invoice to be settled on chain")
 	}
 	if invoice.AmtPaidSat != invoiceAmt {
@@ -337,7 +337,7 @@ func testMultiHopHtlcRemoteChainClaim(net *lntest.NetworkHarness, t *harnessTest
 	// succeeded.
 	ctxt, _ = context.WithTimeout(ctxt, defaultTimeout)
 	err = checkPaymentStatus(
-		ctxt, net.Alice, preimage, lnrpc.Payment_SUCCEEDED,
+		ctxt, net.Alice, preimage, api.Payment_SUCCEEDED,
 	)
 	if err != nil {
 		t.Fatalf(err.Error())

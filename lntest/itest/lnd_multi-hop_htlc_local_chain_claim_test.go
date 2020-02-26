@@ -5,13 +5,13 @@ package itest
 import (
 	"context"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
+	"github.com/lightningnetwork/lnd/lnrpc/api/invoices"
 	"time"
 
 	"github.com/btcsuite/btcd/wire"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/lnd"
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
 	"github.com/lightningnetwork/lnd/lntest"
 	"github.com/lightningnetwork/lnd/lntest/wait"
 	"github.com/lightningnetwork/lnd/lntypes"
@@ -41,7 +41,7 @@ func testMultiHopHtlcLocalChainClaim(net *lntest.NetworkHarness, t *harnessTest)
 	const invoiceAmt = 100000
 	preimage := lntypes.Preimage{1, 2, 3}
 	payHash := preimage.Hash()
-	invoiceReq := &invoicesrpc.AddHoldInvoiceRequest{
+	invoiceReq := &invoices.AddHoldInvoiceRequest{
 		Value:      invoiceAmt,
 		CltvExpiry: 40,
 		Hash:       payHash[:],
@@ -63,7 +63,7 @@ func testMultiHopHtlcLocalChainClaim(net *lntest.NetworkHarness, t *harnessTest)
 	if err != nil {
 		t.Fatalf("unable to create payment stream for alice: %v", err)
 	}
-	err = alicePayStream.Send(&lnrpc.SendRequest{
+	err = alicePayStream.Send(&api.SendRequest{
 		PaymentRequest: carolInvoice.PaymentRequest,
 	})
 	if err != nil {
@@ -117,7 +117,7 @@ func testMultiHopHtlcLocalChainClaim(net *lntest.NetworkHarness, t *harnessTest)
 	// channel arbitrator won't go to chain.
 	ctx, cancel = context.WithTimeout(ctxb, defaultTimeout)
 	defer cancel()
-	_, err = carol.SettleInvoice(ctx, &invoicesrpc.SettleInvoiceMsg{
+	_, err = carol.SettleInvoice(ctx, &invoices.SettleInvoiceMsg{
 		Preimage: preimage[:],
 	})
 	if err != nil {
@@ -236,7 +236,7 @@ func testMultiHopHtlcLocalChainClaim(net *lntest.NetworkHarness, t *harnessTest)
 
 	// At this point, Bob should have broadcast his second layer success
 	// transaction, and should have sent it to the nursery for incubation.
-	pendingChansRequest := &lnrpc.PendingChannelsRequest{}
+	pendingChansRequest := &api.PendingChannelsRequest{}
 	err = wait.Predicate(func() bool {
 		ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
 		pendingChanResp, err := net.Bob.PendingChannels(
@@ -350,7 +350,7 @@ func testMultiHopHtlcLocalChainClaim(net *lntest.NetworkHarness, t *harnessTest)
 				"but shouldn't: %v", spew.Sdump(pendingChanResp))
 			return false
 		}
-		req := &lnrpc.ListChannelsRequest{}
+		req := &api.ListChannelsRequest{}
 		ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
 		chanInfo, err := net.Bob.ListChannels(ctxt, req)
 		if err != nil {
@@ -387,7 +387,7 @@ func testMultiHopHtlcLocalChainClaim(net *lntest.NetworkHarness, t *harnessTest)
 			return false
 		}
 
-		req := &lnrpc.ListChannelsRequest{}
+		req := &api.ListChannelsRequest{}
 		ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
 		chanInfo, err := carol.ListChannels(ctxt, req)
 		if err != nil {
@@ -411,7 +411,7 @@ func testMultiHopHtlcLocalChainClaim(net *lntest.NetworkHarness, t *harnessTest)
 	// succeeded.
 	ctxt, _ = context.WithTimeout(ctxt, defaultTimeout)
 	err = checkPaymentStatus(
-		ctxt, net.Alice, preimage, lnrpc.Payment_SUCCEEDED,
+		ctxt, net.Alice, preimage, api.Payment_SUCCEEDED,
 	)
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -426,7 +426,7 @@ func waitForInvoiceAccepted(t *harnessTest, node *lntest.HarnessNode,
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 	invoiceUpdates, err := node.SubscribeSingleInvoice(ctx,
-		&invoicesrpc.SubscribeSingleInvoiceRequest{
+		&invoices.SubscribeSingleInvoiceRequest{
 			RHash: payHash[:],
 		},
 	)
@@ -439,7 +439,7 @@ func waitForInvoiceAccepted(t *harnessTest, node *lntest.HarnessNode,
 		if err != nil {
 			t.Fatalf("invoice update err: %v", err)
 		}
-		if update.State == lnrpc.Invoice_ACCEPTED {
+		if update.State == api.Invoice_ACCEPTED {
 			break
 		}
 	}
@@ -448,9 +448,9 @@ func waitForInvoiceAccepted(t *harnessTest, node *lntest.HarnessNode,
 // checkPaymentStatus asserts that the given node list a payment with the given
 // preimage has the expected status.
 func checkPaymentStatus(ctxt context.Context, node *lntest.HarnessNode,
-	preimage lntypes.Preimage, status lnrpc.Payment_PaymentStatus) error {
+	preimage lntypes.Preimage, status api.Payment_PaymentStatus) error {
 
-	req := &lnrpc.ListPaymentsRequest{
+	req := &api.ListPaymentsRequest{
 		IncludeIncomplete: true,
 	}
 	paymentsResp, err := node.ListPayments(ctxt, req)
@@ -475,7 +475,7 @@ func checkPaymentStatus(ctxt context.Context, node *lntest.HarnessNode,
 		switch status {
 
 		// If this expected status is SUCCEEDED, we expect the final preimage.
-		case lnrpc.Payment_SUCCEEDED:
+		case api.Payment_SUCCEEDED:
 			if p.PaymentPreimage != preimage.String() {
 				return fmt.Errorf("preimage doesn't match: %v vs %v",
 					p.PaymentPreimage, preimage.String())

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"image/color"
 	"math/big"
 	prand "math/rand"
@@ -43,7 +44,6 @@ import (
 	"github.com/lightningnetwork/lnd/invoices"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/lightningnetwork/lnd/lnpeer"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
@@ -3136,7 +3136,7 @@ type openChanReq struct {
 	// protocol.
 	pendingChanID [32]byte
 
-	updates chan *lnrpc.OpenStatusUpdate
+	updates chan *api.OpenStatusUpdate
 	err     chan error
 }
 
@@ -3278,12 +3278,12 @@ func (s *server) DisconnectPeer(pubKey *btcec.PublicKey) error {
 //
 // NOTE: This function is safe for concurrent access.
 func (s *server) OpenChannel(
-	req *openChanReq) (chan *lnrpc.OpenStatusUpdate, chan error) {
+	req *openChanReq) (chan *api.OpenStatusUpdate, chan error) {
 
 	// The updateChan will have a buffer of 2, since we expect a ChanPending
 	// + a ChanOpen update, and we want to make sure the funding process is
 	// not blocked if the caller is not reading the updates.
-	req.updates = make(chan *lnrpc.OpenStatusUpdate, 2)
+	req.updates = make(chan *api.OpenStatusUpdate, 2)
 	req.err = make(chan error, 1)
 
 	// First attempt to locate the target peer to open a channel with, if
