@@ -1,6 +1,8 @@
 package main
 
-import "github.com/lightningnetwork/lnd/lnrpc/walletrpc"
+import (
+	"github.com/lightningnetwork/lnd/lnrpc/api/wallet"
+)
 
 // PendingSweep is a CLI-friendly type of the walletrpc.PendingSweep proto. We
 // use this to show more useful string versions of byte slices and enums.
@@ -18,7 +20,7 @@ type PendingSweep struct {
 
 // NewPendingSweepFromProto converts the walletrpc.PendingSweep proto type into
 // its corresponding CLI-friendly type.
-func NewPendingSweepFromProto(pendingSweep *walletrpc.PendingSweep) *PendingSweep {
+func NewPendingSweepFromProto(pendingSweep *wallet.PendingSweep) *PendingSweep {
 	return &PendingSweep{
 		OutPoint:            NewOutPointFromProto(pendingSweep.Outpoint),
 		WitnessType:         pendingSweep.WitnessType.String(),

@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
+	"github.com/lightningnetwork/lnd/lnrpc/api/router"
 	math "math"
 	"time"
 
@@ -100,7 +102,7 @@ type MissionControl interface {
 // TODO(roasbeef): should return a slice of routes in reality * create separate
 // PR to send based on well formatted route
 func (r *RouterBackend) QueryRoutes(ctx context.Context,
-	in *lnrpc.QueryRoutesRequest) (*lnrpc.QueryRoutesResponse, error) {
+	in *api.QueryRoutesRequest) (*api.QueryRoutesResponse, error) {
 
 	parsePubKey := func(key string) (route.Vertex, error) {
 		pubKeyBytes, err := hex.DecodeString(key)
@@ -299,8 +301,8 @@ func (r *RouterBackend) QueryRoutes(ctx context.Context,
 	// control may have been disabled in the provided ProbabilitySource.
 	successProb := r.getSuccessProbability(route)
 
-	routeResp := &lnrpc.QueryRoutesResponse{
-		Routes:      []*lnrpc.Route{rpcRoute},
+	routeResp := &api.QueryRoutesResponse{
+		Routes:      []*api.Route{rpcRoute},
 		SuccessProb: successProb,
 	}
 
@@ -331,7 +333,7 @@ func (r *RouterBackend) getSuccessProbability(rt *route.Route) float64 {
 
 // rpcEdgeToPair looks up the provided channel and returns the channel endpoints
 // as a directed pair.
-func (r *RouterBackend) rpcEdgeToPair(e *lnrpc.EdgeLocator) (
+func (r *RouterBackend) rpcEdgeToPair(e *api.EdgeLocator) (
 	routing.DirectedNodePair, error) {
 
 	a, b, err := r.FetchChannelEndpoints(e.ChannelId)
@@ -350,14 +352,14 @@ func (r *RouterBackend) rpcEdgeToPair(e *lnrpc.EdgeLocator) (
 }
 
 // MarshallRoute marshalls an internal route to an rpc route struct.
-func (r *RouterBackend) MarshallRoute(route *route.Route) (*lnrpc.Route, error) {
-	resp := &lnrpc.Route{
+func (r *RouterBackend) MarshallRoute(route *route.Route) (*api.Route, error) {
+	resp := &api.Route{
 		TotalTimeLock: route.TotalTimeLock,
 		TotalFees:     int64(route.TotalFees().ToSatoshis()),
 		TotalFeesMsat: int64(route.TotalFees()),
 		TotalAmt:      int64(route.TotalAmount.ToSatoshis()),
 		TotalAmtMsat:  int64(route.TotalAmount),
-		Hops:          make([]*lnrpc.Hop, len(route.Hops)),
+		Hops:          make([]*api.Hop, len(route.Hops)),
 	}
 	incomingAmt := route.TotalAmount
 	for i, hop := range route.Hops {
@@ -375,17 +377,17 @@ func (r *RouterBackend) MarshallRoute(route *route.Route) (*lnrpc.Route, error) 
 		}
 
 		// Extract the MPP fields if present on this hop.
-		var mpp *lnrpc.MPPRecord
+		var mpp *api.MPPRecord
 		if hop.MPP != nil {
 			addr := hop.MPP.PaymentAddr()
 
-			mpp = &lnrpc.MPPRecord{
+			mpp = &api.MPPRecord{
 				PaymentAddr:  addr[:],
 				TotalAmtMsat: int64(hop.MPP.TotalMsat()),
 			}
 		}
 
-		resp.Hops[i] = &lnrpc.Hop{
+		resp.Hops[i] = &api.Hop{
 			ChanId:           hop.ChannelID,
 			ChanCapacity:     int64(chanCapacity),
 			AmtToForward:     int64(hop.AmtToForward.ToSatoshis()),
@@ -408,7 +410,7 @@ func (r *RouterBackend) MarshallRoute(route *route.Route) (*lnrpc.Route, error) 
 
 // UnmarshallHopWithPubkey unmarshalls an rpc hop for which the pubkey has
 // already been extracted.
-func UnmarshallHopWithPubkey(rpcHop *lnrpc.Hop, pubkey route.Vertex) (*route.Hop,
+func UnmarshallHopWithPubkey(rpcHop *api.Hop, pubkey route.Vertex) (*route.Hop,
 	error) {
 
 	customRecords := record.CustomSet(rpcHop.CustomRecords)
@@ -434,7 +436,7 @@ func UnmarshallHopWithPubkey(rpcHop *lnrpc.Hop, pubkey route.Vertex) (*route.Hop
 
 // UnmarshallHop unmarshalls an rpc hop that may or may not contain a node
 // pubkey.
-func (r *RouterBackend) UnmarshallHop(rpcHop *lnrpc.Hop,
+func (r *RouterBackend) UnmarshallHop(rpcHop *api.Hop,
 	prevNodePubKey [33]byte) (*route.Hop, error) {
 
 	var pubKeyBytes [33]byte
@@ -471,7 +473,7 @@ func (r *RouterBackend) UnmarshallHop(rpcHop *lnrpc.Hop,
 
 // UnmarshallRoute unmarshalls an rpc route. For hops that don't specify a
 // pubkey, the channel graph is queried.
-func (r *RouterBackend) UnmarshallRoute(rpcroute *lnrpc.Route) (
+func (r *RouterBackend) UnmarshallRoute(rpcroute *api.Route) (
 	*route.Route, error) {
 
 	prevNodePubKey := r.SelfNode
@@ -512,7 +514,7 @@ func (r *RouterBackend) UnmarshallRoute(rpcroute *lnrpc.Route) (
 // required to dispatch a client from the information presented by an RPC
 // client.
 func (r *RouterBackend) extractIntentFromSendRequest(
-	rpcPayReq *SendPaymentRequest) (*routing.LightningPayment, error) {
+	rpcPayReq *router.SendPaymentRequest) (*routing.LightningPayment, error) {
 
 	payIntent := &routing.LightningPayment{}
 
@@ -704,7 +706,7 @@ func (r *RouterBackend) extractIntentFromSendRequest(
 }
 
 // unmarshallRouteHints unmarshalls a list of route hints.
-func unmarshallRouteHints(rpcRouteHints []*lnrpc.RouteHint) (
+func unmarshallRouteHints(rpcRouteHints []*api.RouteHint) (
 	[][]zpay32.HopHint, error) {
 
 	routeHints := make([][]zpay32.HopHint, 0, len(rpcRouteHints))
@@ -727,7 +729,7 @@ func unmarshallRouteHints(rpcRouteHints []*lnrpc.RouteHint) (
 }
 
 // unmarshallHopHint unmarshalls a single hop hint.
-func unmarshallHopHint(rpcHint *lnrpc.HopHint) (zpay32.HopHint, error) {
+func unmarshallHopHint(rpcHint *api.HopHint) (zpay32.HopHint, error) {
 	pubBytes, err := hex.DecodeString(rpcHint.NodeId)
 	if err != nil {
 		return zpay32.HopHint{}, err
@@ -751,7 +753,7 @@ func unmarshallHopHint(rpcHint *lnrpc.HopHint) (zpay32.HopHint, error) {
 // This method checks that feature bit pairs aren't assigned toegether, and
 // validates transitive dependencies.
 func UnmarshalFeatures(
-	rpcFeatures []lnrpc.FeatureBit) (*lnwire.FeatureVector, error) {
+	rpcFeatures []api.FeatureBit) (*lnwire.FeatureVector, error) {
 
 	// If no destination features are specified we'll return nil to signal
 	// that the router should try to use the graph as a fallback.
@@ -803,7 +805,7 @@ func ValidateCLTVLimit(val, max uint32) (uint32, error) {
 // address are zero-value, the return value will be nil signaling there is no
 // MPP record to attach to this hop. Otherwise, a non-nil reocrd will be
 // contained combining the provided values.
-func UnmarshalMPP(reqMPP *lnrpc.MPPRecord) (*record.MPP, error) {
+func UnmarshalMPP(reqMPP *api.MPPRecord) (*record.MPP, error) {
 	// If no MPP record was submitted, assume the user wants to send a
 	// regular payment.
 	if reqMPP == nil {
@@ -841,24 +843,24 @@ func UnmarshalMPP(reqMPP *lnrpc.MPPRecord) (*record.MPP, error) {
 
 // MarshalHTLCAttempt constructs an RPC HTLCAttempt from the db representation.
 func (r *RouterBackend) MarshalHTLCAttempt(
-	htlc channeldb.HTLCAttempt) (*lnrpc.HTLCAttempt, error) {
+	htlc channeldb.HTLCAttempt) (*api.HTLCAttempt, error) {
 
 	var (
-		status      lnrpc.HTLCAttempt_HTLCStatus
+		status      api.HTLCAttempt_HTLCStatus
 		resolveTime int64
 	)
 
 	switch {
 	case htlc.Settle != nil:
-		status = lnrpc.HTLCAttempt_SUCCEEDED
+		status = api.HTLCAttempt_SUCCEEDED
 		resolveTime = MarshalTimeNano(htlc.Settle.SettleTime)
 
 	case htlc.Failure != nil:
-		status = lnrpc.HTLCAttempt_FAILED
+		status = api.HTLCAttempt_FAILED
 		resolveTime = MarshalTimeNano(htlc.Failure.FailTime)
 
 	default:
-		status = lnrpc.HTLCAttempt_IN_FLIGHT
+		status = api.HTLCAttempt_IN_FLIGHT
 	}
 
 	route, err := r.MarshallRoute(&htlc.Route)
@@ -866,7 +868,7 @@ func (r *RouterBackend) MarshalHTLCAttempt(
 		return nil, err
 	}
 
-	return &lnrpc.HTLCAttempt{
+	return &api.HTLCAttempt{
 		Status:        status,
 		Route:         route,
 		AttemptTimeNs: MarshalTimeNano(htlc.AttemptTime),

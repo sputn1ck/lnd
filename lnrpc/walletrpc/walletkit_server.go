@@ -7,6 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
+	"github.com/lightningnetwork/lnd/lnrpc/api/wallet"
+
+	signrpc "github.com/lightningnetwork/lnd/lnrpc/api/sign"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,7 +21,6 @@ import (
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/lnrpc/signrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/lightningnetwork/lnd/sweep"
@@ -105,7 +108,7 @@ type WalletKit struct {
 
 // A compile time check to ensure that WalletKit fully implements the
 // WalletKitServer gRPC service.
-var _ WalletKitServer = (*WalletKit)(nil)
+var _ wallet.WalletKitServer = (*WalletKit)(nil)
 
 // New creates a new instance of the WalletKit sub-RPC server.
 func New(cfg *Config) (*WalletKit, lnrpc.MacaroonPerms, error) {
@@ -182,7 +185,7 @@ func (w *WalletKit) Name() string {
 func (w *WalletKit) RegisterWithRootServer(grpcServer *grpc.Server) error {
 	// We make sure that we register it with the main gRPC server to ensure
 	// all our methods are routed properly.
-	RegisterWalletKitServer(grpcServer, w)
+	wallet.RegisterWalletKitServer(grpcServer, w)
 
 	log.Debugf("WalletKit RPC server successfully registered with " +
 		"root gRPC server")
@@ -194,7 +197,7 @@ func (w *WalletKit) RegisterWithRootServer(grpcServer *grpc.Server) error {
 // (account in BIP43) specified. This method should return the next external
 // child within this branch.
 func (w *WalletKit) DeriveNextKey(ctx context.Context,
-	req *KeyReq) (*signrpc.KeyDescriptor, error) {
+	req *wallet.KeyReq) (*signrpc.KeyDescriptor, error) {
 
 	nextKeyDesc, err := w.cfg.KeyRing.DeriveNextKey(
 		keychain.KeyFamily(req.KeyFamily),
@@ -236,14 +239,14 @@ func (w *WalletKit) DeriveKey(ctx context.Context,
 
 // NextAddr returns the next unused address within the wallet.
 func (w *WalletKit) NextAddr(ctx context.Context,
-	req *AddrRequest) (*AddrResponse, error) {
+	req *wallet.AddrRequest) (*wallet.AddrResponse, error) {
 
 	addr, err := w.cfg.Wallet.NewAddress(lnwallet.WitnessPubKey, false)
 	if err != nil {
 		return nil, err
 	}
 
-	return &AddrResponse{
+	return &wallet.AddrResponse{
 		Addr: addr.String(),
 	}, nil
 }
@@ -252,7 +255,7 @@ func (w *WalletKit) NextAddr(ctx context.Context,
 // without an error, the wallet will continually attempt to re-broadcast the
 // transaction on start up, until it enters the chain.
 func (w *WalletKit) PublishTransaction(ctx context.Context,
-	req *Transaction) (*PublishResponse, error) {
+	req *wallet.Transaction) (*wallet.PublishResponse, error) {
 
 	switch {
 	// If the client doesn't specify a transaction, then there's nothing to
@@ -273,14 +276,14 @@ func (w *WalletKit) PublishTransaction(ctx context.Context,
 		return nil, err
 	}
 
-	return &PublishResponse{}, nil
+	return &wallet.PublishResponse{}, nil
 }
 
 // SendOutputs is similar to the existing sendmany call in Bitcoind, and allows
 // the caller to create a transaction that sends to several outputs at once.
 // This is ideal when wanting to batch create a set of transactions.
 func (w *WalletKit) SendOutputs(ctx context.Context,
-	req *SendOutputsRequest) (*SendOutputsResponse, error) {
+	req *wallet.SendOutputsRequest) (*wallet.SendOutputsResponse, error) {
 
 	switch {
 	// If the client didn't specify any outputs to create, then  we can't
@@ -315,7 +318,7 @@ func (w *WalletKit) SendOutputs(ctx context.Context,
 		return nil, err
 	}
 
-	return &SendOutputsResponse{
+	return &wallet.SendOutputsResponse{
 		RawTx: b.Bytes(),
 	}, nil
 }
@@ -324,7 +327,7 @@ func (w *WalletKit) SendOutputs(ctx context.Context,
 // determine the fee (in sat/kw) to attach to a transaction in order to achieve
 // the confirmation target.
 func (w *WalletKit) EstimateFee(ctx context.Context,
-	req *EstimateFeeRequest) (*EstimateFeeResponse, error) {
+	req *wallet.EstimateFeeRequest) (*wallet.EstimateFeeResponse, error) {
 
 	switch {
 	// A confirmation target of zero doesn't make any sense. Similarly, we
@@ -341,7 +344,7 @@ func (w *WalletKit) EstimateFee(ctx context.Context,
 		return nil, err
 	}
 
-	return &EstimateFeeResponse{
+	return &wallet.EstimateFeeResponse{
 		SatPerKw: int64(satPerKw),
 	}, nil
 }
@@ -352,7 +355,7 @@ func (w *WalletKit) EstimateFee(ctx context.Context,
 // transaction. The fee rate of each sweeping transaction is determined by
 // taking the average fee rate of all the outputs it's trying to sweep.
 func (w *WalletKit) PendingSweeps(ctx context.Context,
-	in *PendingSweepsRequest) (*PendingSweepsResponse, error) {
+	in *wallet.PendingSweepsRequest) (*wallet.PendingSweepsResponse, error) {
 
 	// Retrieve all of the outputs the UtxoSweeper is currently trying to
 	// sweep.
@@ -362,40 +365,40 @@ func (w *WalletKit) PendingSweeps(ctx context.Context,
 	}
 
 	// Convert them into their respective RPC format.
-	rpcPendingSweeps := make([]*PendingSweep, 0, len(pendingInputs))
+	rpcPendingSweeps := make([]*wallet.PendingSweep, 0, len(pendingInputs))
 	for _, pendingInput := range pendingInputs {
-		var witnessType WitnessType
+		var witnessType wallet.WitnessType
 		switch pendingInput.WitnessType {
 		case input.CommitmentTimeLock:
-			witnessType = WitnessType_COMMITMENT_TIME_LOCK
+			witnessType = wallet.WitnessType_COMMITMENT_TIME_LOCK
 		case input.CommitmentNoDelay:
-			witnessType = WitnessType_COMMITMENT_NO_DELAY
+			witnessType = wallet.WitnessType_COMMITMENT_NO_DELAY
 		case input.CommitmentRevoke:
-			witnessType = WitnessType_COMMITMENT_REVOKE
+			witnessType = wallet.WitnessType_COMMITMENT_REVOKE
 		case input.HtlcOfferedRevoke:
-			witnessType = WitnessType_HTLC_OFFERED_REVOKE
+			witnessType = wallet.WitnessType_HTLC_OFFERED_REVOKE
 		case input.HtlcAcceptedRevoke:
-			witnessType = WitnessType_HTLC_ACCEPTED_REVOKE
+			witnessType = wallet.WitnessType_HTLC_ACCEPTED_REVOKE
 		case input.HtlcOfferedTimeoutSecondLevel:
-			witnessType = WitnessType_HTLC_OFFERED_TIMEOUT_SECOND_LEVEL
+			witnessType = wallet.WitnessType_HTLC_OFFERED_TIMEOUT_SECOND_LEVEL
 		case input.HtlcAcceptedSuccessSecondLevel:
-			witnessType = WitnessType_HTLC_ACCEPTED_SUCCESS_SECOND_LEVEL
+			witnessType = wallet.WitnessType_HTLC_ACCEPTED_SUCCESS_SECOND_LEVEL
 		case input.HtlcOfferedRemoteTimeout:
-			witnessType = WitnessType_HTLC_OFFERED_REMOTE_TIMEOUT
+			witnessType = wallet.WitnessType_HTLC_OFFERED_REMOTE_TIMEOUT
 		case input.HtlcAcceptedRemoteSuccess:
-			witnessType = WitnessType_HTLC_ACCEPTED_REMOTE_SUCCESS
+			witnessType = wallet.WitnessType_HTLC_ACCEPTED_REMOTE_SUCCESS
 		case input.HtlcSecondLevelRevoke:
-			witnessType = WitnessType_HTLC_SECOND_LEVEL_REVOKE
+			witnessType = wallet.WitnessType_HTLC_SECOND_LEVEL_REVOKE
 		case input.WitnessKeyHash:
-			witnessType = WitnessType_WITNESS_KEY_HASH
+			witnessType = wallet.WitnessType_WITNESS_KEY_HASH
 		case input.NestedWitnessKeyHash:
-			witnessType = WitnessType_NESTED_WITNESS_KEY_HASH
+			witnessType = wallet.WitnessType_NESTED_WITNESS_KEY_HASH
 		default:
 			log.Warnf("Unhandled witness type %v for input %v",
 				pendingInput.WitnessType, pendingInput.OutPoint)
 		}
 
-		op := &lnrpc.OutPoint{
+		op := &api.OutPoint{
 			TxidBytes:   pendingInput.OutPoint.Hash[:],
 			OutputIndex: pendingInput.OutPoint.Index,
 		}
@@ -407,7 +410,7 @@ func (w *WalletKit) PendingSweeps(ctx context.Context,
 		requestedFee := pendingInput.Params.Fee
 		requestedFeeRate := uint32(requestedFee.FeeRate.FeePerKVByte() / 1000)
 
-		rpcPendingSweeps = append(rpcPendingSweeps, &PendingSweep{
+		rpcPendingSweeps = append(rpcPendingSweeps, &wallet.PendingSweep{
 			Outpoint:            op,
 			WitnessType:         witnessType,
 			AmountSat:           amountSat,
@@ -420,14 +423,14 @@ func (w *WalletKit) PendingSweeps(ctx context.Context,
 		})
 	}
 
-	return &PendingSweepsResponse{
+	return &wallet.PendingSweepsResponse{
 		PendingSweeps: rpcPendingSweeps,
 	}, nil
 }
 
 // unmarshallOutPoint converts an outpoint from its lnrpc type to its canonical
 // type.
-func unmarshallOutPoint(op *lnrpc.OutPoint) (*wire.OutPoint, error) {
+func unmarshallOutPoint(op *api.OutPoint) (*wire.OutPoint, error) {
 	if op == nil {
 		return nil, fmt.Errorf("empty outpoint provided")
 	}
@@ -466,7 +469,7 @@ func unmarshallOutPoint(op *lnrpc.OutPoint) (*wire.OutPoint, error) {
 // explicitly specified, then an error is returned. The status of the input
 // sweep can be checked through the PendingSweeps RPC.
 func (w *WalletKit) BumpFee(ctx context.Context,
-	in *BumpFeeRequest) (*BumpFeeResponse, error) {
+	in *wallet.BumpFeeRequest) (*wallet.BumpFeeResponse, error) {
 
 	// Parse the outpoint from the request.
 	op, err := unmarshallOutPoint(in.Outpoint)
@@ -494,7 +497,7 @@ func (w *WalletKit) BumpFee(ctx context.Context,
 	_, err = w.cfg.Sweeper.UpdateParams(*op, params)
 	switch err {
 	case nil:
-		return &BumpFeeResponse{}, nil
+		return &wallet.BumpFeeResponse{}, nil
 	case lnwallet.ErrNotMine:
 		break
 	default:
@@ -551,5 +554,5 @@ func (w *WalletKit) BumpFee(ctx context.Context,
 		return nil, err
 	}
 
-	return &BumpFeeResponse{}, nil
+	return &wallet.BumpFeeResponse{}, nil
 }

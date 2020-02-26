@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/lightningnetwork/lnd/lnrpc/api/chain"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -139,7 +140,7 @@ func New(cfg *Config) (*Server, lnrpc.MacaroonPerms, error) {
 
 // Compile-time checks to ensure that Server fully implements the
 // ChainNotifierServer gRPC service and lnrpc.SubServer interface.
-var _ ChainNotifierServer = (*Server)(nil)
+var _ chain.ChainNotifierServer = (*Server)(nil)
 var _ lnrpc.SubServer = (*Server)(nil)
 
 // Start launches any helper goroutines required for the server to function.
@@ -176,7 +177,7 @@ func (s *Server) Name() string {
 func (s *Server) RegisterWithRootServer(grpcServer *grpc.Server) error {
 	// We make sure that we register it with the main gRPC server to ensure
 	// all our methods are routed properly.
-	RegisterChainNotifierServer(grpcServer, s)
+	chain.RegisterChainNotifierServer(grpcServer, s)
 
 	log.Debug("ChainNotifier RPC server successfully register with root " +
 		"gRPC server")
@@ -193,8 +194,8 @@ func (s *Server) RegisterWithRootServer(grpcServer *grpc.Server) error {
 // zero hash.
 //
 // NOTE: This is part of the chainrpc.ChainNotifierService interface.
-func (s *Server) RegisterConfirmationsNtfn(in *ConfRequest,
-	confStream ChainNotifier_RegisterConfirmationsNtfnServer) error {
+func (s *Server) RegisterConfirmationsNtfn(in *chain.ConfRequest,
+	confStream chain.ChainNotifier_RegisterConfirmationsNtfnServer) error {
 
 	// We'll start by reconstructing the RPC request into what the
 	// underlying ChainNotifier expects.
@@ -228,15 +229,15 @@ func (s *Server) RegisterConfirmationsNtfn(in *ConfRequest,
 				return err
 			}
 
-			rpcConfDetails := &ConfDetails{
+			rpcConfDetails := &chain.ConfDetails{
 				RawTx:       rawTxBuf.Bytes(),
 				BlockHash:   details.BlockHash[:],
 				BlockHeight: details.BlockHeight,
 				TxIndex:     details.TxIndex,
 			}
 
-			conf := &ConfEvent{
-				Event: &ConfEvent_Conf{
+			conf := &chain.ConfEvent{
+				Event: &chain.ConfEvent_Conf{
 					Conf: rpcConfDetails,
 				},
 			}
@@ -251,8 +252,8 @@ func (s *Server) RegisterConfirmationsNtfn(in *ConfRequest,
 				return chainntnfs.ErrChainNotifierShuttingDown
 			}
 
-			reorg := &ConfEvent{
-				Event: &ConfEvent_Reorg{Reorg: &Reorg{}},
+			reorg := &chain.ConfEvent{
+				Event: &chain.ConfEvent_Reorg{Reorg: &chain.Reorg{}},
 			}
 			if err := confStream.Send(reorg); err != nil {
 				return err
@@ -289,8 +290,8 @@ func (s *Server) RegisterConfirmationsNtfn(in *ConfRequest,
 // outpoint  or for an output script by specifying a zero outpoint.
 //
 // NOTE: This is part of the chainrpc.ChainNotifierService interface.
-func (s *Server) RegisterSpendNtfn(in *SpendRequest,
-	spendStream ChainNotifier_RegisterSpendNtfnServer) error {
+func (s *Server) RegisterSpendNtfn(in *chain.SpendRequest,
+	spendStream chain.ChainNotifier_RegisterSpendNtfnServer) error {
 
 	// We'll start by reconstructing the RPC request into what the
 	// underlying ChainNotifier expects.
@@ -328,8 +329,8 @@ func (s *Server) RegisterSpendNtfn(in *SpendRequest,
 				return err
 			}
 
-			rpcSpendDetails := &SpendDetails{
-				SpendingOutpoint: &Outpoint{
+			rpcSpendDetails := &chain.SpendDetails{
+				SpendingOutpoint: &chain.Outpoint{
 					Hash:  details.SpentOutPoint.Hash[:],
 					Index: details.SpentOutPoint.Index,
 				},
@@ -339,8 +340,8 @@ func (s *Server) RegisterSpendNtfn(in *SpendRequest,
 				SpendingHeight:     uint32(details.SpendingHeight),
 			}
 
-			spend := &SpendEvent{
-				Event: &SpendEvent_Spend{
+			spend := &chain.SpendEvent{
+				Event: &chain.SpendEvent_Spend{
 					Spend: rpcSpendDetails,
 				},
 			}
@@ -355,8 +356,8 @@ func (s *Server) RegisterSpendNtfn(in *SpendRequest,
 				return chainntnfs.ErrChainNotifierShuttingDown
 			}
 
-			reorg := &SpendEvent{
-				Event: &SpendEvent_Reorg{Reorg: &Reorg{}},
+			reorg := &chain.SpendEvent{
+				Event: &chain.SpendEvent_Reorg{Reorg: &chain.Reorg{}},
 			}
 			if err := spendStream.Send(reorg); err != nil {
 				return err
@@ -396,8 +397,8 @@ func (s *Server) RegisterSpendNtfn(in *SpendRequest,
 // missing processing a single block within the chain.
 //
 // NOTE: This is part of the chainrpc.ChainNotifierService interface.
-func (s *Server) RegisterBlockEpochNtfn(in *BlockEpoch,
-	epochStream ChainNotifier_RegisterBlockEpochNtfnServer) error {
+func (s *Server) RegisterBlockEpochNtfn(in *chain.BlockEpoch,
+	epochStream chain.ChainNotifier_RegisterBlockEpochNtfnServer) error {
 
 	// We'll start by reconstructing the RPC request into what the
 	// underlying ChainNotifier expects.
@@ -431,7 +432,7 @@ func (s *Server) RegisterBlockEpochNtfn(in *BlockEpoch,
 				return chainntnfs.ErrChainNotifierShuttingDown
 			}
 
-			epoch := &BlockEpoch{
+			epoch := &chain.BlockEpoch{
 				Hash:   blockEpoch.Hash[:],
 				Height: uint32(blockEpoch.Height),
 			}

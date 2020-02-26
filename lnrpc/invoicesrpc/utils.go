@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/lightningnetwork/lnd/channeldb"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/zpay32"
 )
@@ -43,7 +43,7 @@ func decodePayReq(invoice *channeldb.Invoice,
 
 // CreateRPCInvoice creates an *lnrpc.Invoice from the *channeldb.Invoice.
 func CreateRPCInvoice(invoice *channeldb.Invoice,
-	activeNetParams *chaincfg.Params) (*lnrpc.Invoice, error) {
+	activeNetParams *chaincfg.Params) (*api.Invoice, error) {
 
 	decoded, err := decodePayReq(invoice, activeNetParams)
 	if err != nil {
@@ -74,36 +74,36 @@ func CreateRPCInvoice(invoice *channeldb.Invoice,
 
 	isSettled := invoice.State == channeldb.ContractSettled
 
-	var state lnrpc.Invoice_InvoiceState
+	var state api.Invoice_InvoiceState
 	switch invoice.State {
 	case channeldb.ContractOpen:
-		state = lnrpc.Invoice_OPEN
+		state = api.Invoice_OPEN
 	case channeldb.ContractSettled:
-		state = lnrpc.Invoice_SETTLED
+		state = api.Invoice_SETTLED
 	case channeldb.ContractCanceled:
-		state = lnrpc.Invoice_CANCELED
+		state = api.Invoice_CANCELED
 	case channeldb.ContractAccepted:
-		state = lnrpc.Invoice_ACCEPTED
+		state = api.Invoice_ACCEPTED
 	default:
 		return nil, fmt.Errorf("unknown invoice state %v",
 			invoice.State)
 	}
 
-	rpcHtlcs := make([]*lnrpc.InvoiceHTLC, 0, len(invoice.Htlcs))
+	rpcHtlcs := make([]*api.InvoiceHTLC, 0, len(invoice.Htlcs))
 	for key, htlc := range invoice.Htlcs {
-		var state lnrpc.InvoiceHTLCState
+		var state api.InvoiceHTLCState
 		switch htlc.State {
 		case channeldb.HtlcStateAccepted:
-			state = lnrpc.InvoiceHTLCState_ACCEPTED
+			state = api.InvoiceHTLCState_ACCEPTED
 		case channeldb.HtlcStateSettled:
-			state = lnrpc.InvoiceHTLCState_SETTLED
+			state = api.InvoiceHTLCState_SETTLED
 		case channeldb.HtlcStateCanceled:
-			state = lnrpc.InvoiceHTLCState_CANCELED
+			state = api.InvoiceHTLCState_CANCELED
 		default:
 			return nil, fmt.Errorf("unknown state %v", htlc.State)
 		}
 
-		rpcHtlc := lnrpc.InvoiceHTLC{
+		rpcHtlc := api.InvoiceHTLC{
 			ChanId:          key.ChanID.ToUint64(),
 			HtlcIndex:       key.HtlcID,
 			AcceptHeight:    int32(htlc.AcceptHeight),
@@ -123,7 +123,7 @@ func CreateRPCInvoice(invoice *channeldb.Invoice,
 		rpcHtlcs = append(rpcHtlcs, &rpcHtlc)
 	}
 
-	rpcInvoice := &lnrpc.Invoice{
+	rpcInvoice := &api.Invoice{
 		Memo:            string(invoice.Memo[:]),
 		RHash:           decoded.PaymentHash[:],
 		Value:           int64(satAmt),
@@ -157,15 +157,15 @@ func CreateRPCInvoice(invoice *channeldb.Invoice,
 }
 
 // CreateRPCFeatures maps a feature vector into a list of lnrpc.Features.
-func CreateRPCFeatures(fv *lnwire.FeatureVector) map[uint32]*lnrpc.Feature {
+func CreateRPCFeatures(fv *lnwire.FeatureVector) map[uint32]*api.Feature {
 	if fv == nil {
 		return nil
 	}
 
 	features := fv.Features()
-	rpcFeatures := make(map[uint32]*lnrpc.Feature, len(features))
+	rpcFeatures := make(map[uint32]*api.Feature, len(features))
 	for bit := range features {
-		rpcFeatures[uint32(bit)] = &lnrpc.Feature{
+		rpcFeatures[uint32(bit)] = &api.Feature{
 			Name:       fv.Name(bit),
 			IsRequired: bit.IsRequired(),
 			IsKnown:    fv.IsKnown(bit),
@@ -177,17 +177,17 @@ func CreateRPCFeatures(fv *lnwire.FeatureVector) map[uint32]*lnrpc.Feature {
 
 // CreateRPCRouteHints takes in the decoded form of an invoice's route hints
 // and converts them into the lnrpc type.
-func CreateRPCRouteHints(routeHints [][]zpay32.HopHint) []*lnrpc.RouteHint {
-	var res []*lnrpc.RouteHint
+func CreateRPCRouteHints(routeHints [][]zpay32.HopHint) []*api.RouteHint {
+	var res []*api.RouteHint
 
 	for _, route := range routeHints {
-		hopHints := make([]*lnrpc.HopHint, 0, len(route))
+		hopHints := make([]*api.HopHint, 0, len(route))
 		for _, hop := range route {
 			pubKey := hex.EncodeToString(
 				hop.NodeID.SerializeCompressed(),
 			)
 
-			hint := &lnrpc.HopHint{
+			hint := &api.HopHint{
 				NodeId:                    pubKey,
 				ChanId:                    hop.ChannelID,
 				FeeBaseMsat:               hop.FeeBaseMSat,
@@ -198,7 +198,7 @@ func CreateRPCRouteHints(routeHints [][]zpay32.HopHint) []*lnrpc.RouteHint {
 			hopHints = append(hopHints, hint)
 		}
 
-		routeHint := &lnrpc.RouteHint{HopHints: hopHints}
+		routeHint := &api.RouteHint{HopHints: hopHints}
 		res = append(res, routeHint)
 	}
 

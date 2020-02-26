@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"io/ioutil"
 	"math/big"
 	"net"
@@ -30,7 +31,6 @@ import (
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnpeer"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/lightningnetwork/lnd/lnwire"
@@ -572,7 +572,7 @@ func tearDownFundingManagers(t *testing.T, a, b *testNode) {
 // transaction is confirmed on-chain. Returns the funding out point.
 func openChannel(t *testing.T, alice, bob *testNode, localFundingAmt,
 	pushAmt btcutil.Amount, numConfs uint32,
-	updateChan chan *lnrpc.OpenStatusUpdate, announceChan bool) (
+	updateChan chan *api.OpenStatusUpdate, announceChan bool) (
 	*wire.OutPoint, *wire.MsgTx) {
 
 	publ := fundChannel(
@@ -590,7 +590,7 @@ func openChannel(t *testing.T, alice, bob *testNode, localFundingAmt,
 // transaction is confirmed on-chain. Returns the funding tx.
 func fundChannel(t *testing.T, alice, bob *testNode, localFundingAmt,
 	pushAmt btcutil.Amount, subtractFees bool, numConfs uint32,
-	updateChan chan *lnrpc.OpenStatusUpdate, announceChan bool) *wire.MsgTx {
+	updateChan chan *api.OpenStatusUpdate, announceChan bool) *wire.MsgTx {
 
 	// Create a funding request and start the workflow.
 	errChan := make(chan error, 1)
@@ -665,14 +665,14 @@ func fundChannel(t *testing.T, alice, bob *testNode, localFundingAmt,
 	// After Alice processes the singleFundingSignComplete message, she will
 	// broadcast the funding transaction to the network. We expect to get a
 	// channel update saying the channel is pending.
-	var pendingUpdate *lnrpc.OpenStatusUpdate
+	var pendingUpdate *api.OpenStatusUpdate
 	select {
 	case pendingUpdate = <-updateChan:
 	case <-time.After(time.Second * 5):
 		t.Fatalf("alice did not send OpenStatusUpdate_ChanPending")
 	}
 
-	_, ok = pendingUpdate.Update.(*lnrpc.OpenStatusUpdate_ChanPending)
+	_, ok = pendingUpdate.Update.(*api.OpenStatusUpdate_ChanPending)
 	if !ok {
 		t.Fatal("OpenStatusUpdate was not OpenStatusUpdate_ChanPending")
 	}
@@ -1031,15 +1031,15 @@ func assertAnnouncementSignatures(t *testing.T, alice, bob *testNode) {
 	}
 }
 
-func waitForOpenUpdate(t *testing.T, updateChan chan *lnrpc.OpenStatusUpdate) {
-	var openUpdate *lnrpc.OpenStatusUpdate
+func waitForOpenUpdate(t *testing.T, updateChan chan *api.OpenStatusUpdate) {
+	var openUpdate *api.OpenStatusUpdate
 	select {
 	case openUpdate = <-updateChan:
 	case <-time.After(time.Second * 5):
 		t.Fatalf("alice did not send OpenStatusUpdate")
 	}
 
-	_, ok := openUpdate.Update.(*lnrpc.OpenStatusUpdate_ChanOpen)
+	_, ok := openUpdate.Update.(*api.OpenStatusUpdate_ChanOpen)
 	if !ok {
 		t.Fatal("OpenStatusUpdate was not OpenStatusUpdate_ChanOpen")
 	}
@@ -1104,7 +1104,7 @@ func TestFundingManagerNormalWorkflow(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Run through the process of opening the channel, up until the funding
 	// transaction is broadcasted.
@@ -1192,7 +1192,7 @@ func TestFundingManagerRestartBehavior(t *testing.T) {
 	localAmt := btcutil.Amount(500000)
 	pushAmt := btcutil.Amount(0)
 	capacity := localAmt + pushAmt
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 	fundingOutPoint, fundingTx := openChannel(
 		t, alice, bob, localAmt, pushAmt, 1, updateChan, true,
 	)
@@ -1341,7 +1341,7 @@ func TestFundingManagerOfflinePeer(t *testing.T) {
 	localAmt := btcutil.Amount(500000)
 	pushAmt := btcutil.Amount(0)
 	capacity := localAmt + pushAmt
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 	fundingOutPoint, fundingTx := openChannel(
 		t, alice, bob, localAmt, pushAmt, 1, updateChan, true,
 	)
@@ -1482,7 +1482,7 @@ func TestFundingManagerPeerTimeoutAfterInitFunding(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Create a funding request and start the workflow.
 	errChan := make(chan error, 1)
@@ -1544,7 +1544,7 @@ func TestFundingManagerPeerTimeoutAfterFundingOpen(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Create a funding request and start the workflow.
 	errChan := make(chan error, 1)
@@ -1615,7 +1615,7 @@ func TestFundingManagerPeerTimeoutAfterFundingAccept(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Create a funding request and start the workflow.
 	errChan := make(chan error, 1)
@@ -1691,7 +1691,7 @@ func TestFundingManagerFundingTimeout(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Run through the process of opening the channel, up until the funding
 	// transaction is broadcasted.
@@ -1737,7 +1737,7 @@ func TestFundingManagerFundingNotTimeoutInitiator(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Run through the process of opening the channel, up until the funding
 	// transaction is broadcasted.
@@ -1806,7 +1806,7 @@ func TestFundingManagerReceiveFundingLockedTwice(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Run through the process of opening the channel, up until the funding
 	// transaction is broadcasted.
@@ -1909,7 +1909,7 @@ func TestFundingManagerRestartAfterChanAnn(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Run through the process of opening the channel, up until the funding
 	// transaction is broadcasted.
@@ -1997,7 +1997,7 @@ func TestFundingManagerRestartAfterReceivingFundingLocked(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Run through the process of opening the channel, up until the funding
 	// transaction is broadcasted.
@@ -2081,7 +2081,7 @@ func TestFundingManagerPrivateChannel(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Run through the process of opening the channel, up until the funding
 	// transaction is broadcasted.
@@ -2194,7 +2194,7 @@ func TestFundingManagerPrivateRestart(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// We will consume the channel updates as we go, so no buffering is needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	// Run through the process of opening the channel, up until the funding
 	// transaction is broadcasted.
@@ -2332,7 +2332,7 @@ func TestFundingManagerCustomChannelParameters(t *testing.T) {
 
 	// We will consume the channel updates as we go, so no buffering is
 	// needed.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 
 	localAmt := btcutil.Amount(5000000)
 	pushAmt := btcutil.Amount(0)
@@ -2503,14 +2503,14 @@ func TestFundingManagerCustomChannelParameters(t *testing.T) {
 	// After Alice processes the singleFundingSignComplete message, she will
 	// broadcast the funding transaction to the network. We expect to get a
 	// channel update saying the channel is pending.
-	var pendingUpdate *lnrpc.OpenStatusUpdate
+	var pendingUpdate *api.OpenStatusUpdate
 	select {
 	case pendingUpdate = <-updateChan:
 	case <-time.After(time.Second * 5):
 		t.Fatalf("alice did not send OpenStatusUpdate_ChanPending")
 	}
 
-	_, ok = pendingUpdate.Update.(*lnrpc.OpenStatusUpdate_ChanPending)
+	_, ok = pendingUpdate.Update.(*api.OpenStatusUpdate_ChanPending)
 	if !ok {
 		t.Fatal("OpenStatusUpdate was not OpenStatusUpdate_ChanPending")
 	}
@@ -2570,7 +2570,7 @@ func TestFundingManagerMaxPendingChannels(t *testing.T) {
 	// Create openChanReqs for maxPending+1 channels.
 	var initReqs []*openChanReq
 	for i := 0; i < maxPending+1; i++ {
-		updateChan := make(chan *lnrpc.OpenStatusUpdate)
+		updateChan := make(chan *api.OpenStatusUpdate)
 		errChan := make(chan error, 1)
 		initReq := &openChanReq{
 			targetPubkey:    bob.privKey.PubKey(),
@@ -2668,14 +2668,14 @@ func TestFundingManagerMaxPendingChannels(t *testing.T) {
 
 		// Alice should send a status update for each channel, and
 		// publish a funding tx to the network.
-		var pendingUpdate *lnrpc.OpenStatusUpdate
+		var pendingUpdate *api.OpenStatusUpdate
 		select {
 		case pendingUpdate = <-initReqs[i].updates:
 		case <-time.After(time.Second * 5):
 			t.Fatalf("alice did not send OpenStatusUpdate_ChanPending")
 		}
 
-		_, ok := pendingUpdate.Update.(*lnrpc.OpenStatusUpdate_ChanPending)
+		_, ok := pendingUpdate.Update.(*api.OpenStatusUpdate_ChanPending)
 		if !ok {
 			t.Fatal("OpenStatusUpdate was not OpenStatusUpdate_ChanPending")
 		}
@@ -2740,7 +2740,7 @@ func TestFundingManagerRejectPush(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// Create a funding request and start the workflow.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 	errChan := make(chan error, 1)
 	initReq := &openChanReq{
 		targetPubkey:    bob.privKey.PubKey(),
@@ -2797,7 +2797,7 @@ func TestFundingManagerMaxConfs(t *testing.T) {
 	defer tearDownFundingManagers(t, alice, bob)
 
 	// Create a funding request and start the workflow.
-	updateChan := make(chan *lnrpc.OpenStatusUpdate)
+	updateChan := make(chan *api.OpenStatusUpdate)
 	errChan := make(chan error, 1)
 	initReq := &openChanReq{
 		targetPubkey:    bob.privKey.PubKey(),
@@ -2919,7 +2919,7 @@ func TestFundingManagerFundAll(t *testing.T) {
 
 		// We will consume the channel updates as we go, so no
 		// buffering is needed.
-		updateChan := make(chan *lnrpc.OpenStatusUpdate)
+		updateChan := make(chan *api.OpenStatusUpdate)
 
 		// Initiate a fund channel, and inspect the funding tx.
 		pushAmt := btcutil.Amount(0)

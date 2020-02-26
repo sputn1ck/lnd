@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"io/ioutil"
 	"net"
 	"strings"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/macaroons"
 	"github.com/urfave/cli"
 	"gopkg.in/macaroon.v2"
@@ -66,7 +66,7 @@ func bakeMacaroon(ctx *cli.Context) error {
 		savePath          string
 		timeout           int64
 		ipAddress         net.IP
-		parsedPermissions []*lnrpc.MacaroonPermission
+		parsedPermissions []*api.MacaroonPermission
 		err               error
 	)
 
@@ -111,7 +111,7 @@ func bakeMacaroon(ctx *cli.Context) error {
 		// No we can assume that we have a formally valid entity:action
 		// tuple. The rest of the validation happens server side.
 		parsedPermissions = append(
-			parsedPermissions, &lnrpc.MacaroonPermission{
+			parsedPermissions, &api.MacaroonPermission{
 				Entity: entity,
 				Action: action,
 			},
@@ -120,7 +120,7 @@ func bakeMacaroon(ctx *cli.Context) error {
 
 	// Now we have gathered all the input we need and can do the actual
 	// RPC call.
-	req := &lnrpc.BakeMacaroonRequest{
+	req := &api.BakeMacaroonRequest{
 		Permissions: parsedPermissions,
 	}
 	resp, err := client.BakeMacaroon(context.Background(), req)

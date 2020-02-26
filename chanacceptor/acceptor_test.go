@@ -2,11 +2,10 @@ package chanacceptor
 
 import (
 	"bytes"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/lightningnetwork/lnd/lnrpc"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/lightningnetwork/lnd/lnwire"
@@ -27,7 +26,7 @@ func randKey(t *testing.T) *btcec.PublicKey {
 // receiver on the other end of the stream.
 type requestInfo struct {
 	chanReq      *ChannelAcceptRequest
-	responseChan chan lnrpc.ChannelAcceptResponse
+	responseChan chan api.ChannelAcceptResponse
 }
 
 var defaultAcceptTimeout = 5 * time.Second
@@ -88,7 +87,7 @@ func TestRPCMultipleAcceptClients(t *testing.T) {
 	// demultiplexReq is a closure used to abstract the RPCAcceptor's request
 	// and response logic.
 	demultiplexReq := func(req *ChannelAcceptRequest) bool {
-		respChan := make(chan lnrpc.ChannelAcceptResponse, 1)
+		respChan := make(chan api.ChannelAcceptResponse, 1)
 
 		newRequest := &requestInfo{
 			chanReq:      req,
@@ -140,7 +139,7 @@ func TestRPCMultipleAcceptClients(t *testing.T) {
 	for {
 		select {
 		case newRequest := <-requests:
-			newResponse := lnrpc.ChannelAcceptResponse{
+			newResponse := api.ChannelAcceptResponse{
 				Accept:        true,
 				PendingChanId: newRequest.chanReq.OpenChanMsg.PendingChannelID[:],
 			}

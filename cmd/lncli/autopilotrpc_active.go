@@ -4,19 +4,19 @@ package main
 
 import (
 	"context"
+	"github.com/lightningnetwork/lnd/lnrpc/api/autopilot"
 
-	"github.com/lightningnetwork/lnd/lnrpc/autopilotrpc"
 	"github.com/urfave/cli"
 )
 
-func getAutopilotClient(ctx *cli.Context) (autopilotrpc.AutopilotClient, func()) {
+func getAutopilotClient(ctx *cli.Context) (autopilot.AutopilotClient, func()) {
 	conn := getClientConn(ctx, false)
 
 	cleanUp := func() {
 		conn.Close()
 	}
 
-	return autopilotrpc.NewAutopilotClient(conn), cleanUp
+	return autopilot.NewAutopilotClient(conn), cleanUp
 }
 
 var getStatusCommand = cli.Command{
@@ -31,7 +31,7 @@ func getStatus(ctx *cli.Context) error {
 	client, cleanUp := getAutopilotClient(ctx)
 	defer cleanUp()
 
-	req := &autopilotrpc.StatusRequest{}
+	req := &autopilot.StatusRequest{}
 
 	resp, err := client.Status(ctxb, req)
 	if err != nil {
@@ -62,7 +62,7 @@ func enable(ctx *cli.Context) error {
 	defer cleanUp()
 
 	// We will enable the autopilot.
-	req := &autopilotrpc.ModifyStatusRequest{
+	req := &autopilot.ModifyStatusRequest{
 		Enable: true,
 	}
 
@@ -81,7 +81,7 @@ func disable(ctx *cli.Context) error {
 	defer cleanUp()
 
 	// We will disable the autopilot.
-	req := &autopilotrpc.ModifyStatusRequest{
+	req := &autopilot.ModifyStatusRequest{
 		Enable: false,
 	}
 
@@ -129,7 +129,7 @@ loop:
 		}
 	}
 
-	req := &autopilotrpc.QueryScoresRequest{
+	req := &autopilot.QueryScoresRequest{
 		Pubkeys:          pubs,
 		IgnoreLocalState: ctx.Bool("ignorelocalstate"),
 	}

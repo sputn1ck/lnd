@@ -45,7 +45,7 @@ serialized proto.
 
 In order to generate protobuf definitions for your language of choice, add the
 proto plugin to the `protoc` invocations found in
-[`gen_protos.sh`](../lnrpc/gen_protos.sh). For instance to generate protos for
+[`gen_protos.sh`](../lnrpc/api/gen_protos.sh). For instance to generate protos for
 Swift, add `--swift_out=.` and run `make rpc`.
 
 ### Options

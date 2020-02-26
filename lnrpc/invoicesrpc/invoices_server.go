@@ -4,6 +4,7 @@ package invoicesrpc
 
 import (
 	"context"
+	. "github.com/lightningnetwork/lnd/lnrpc/api/invoices"
 	"io/ioutil"
 	"os"
 	"path/filepath"

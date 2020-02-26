@@ -6,10 +6,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api/invoices"
 
 	"strconv"
 
-	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
 	"github.com/urfave/cli"
 )
 
@@ -22,14 +22,14 @@ func invoicesCommands() []cli.Command {
 	}
 }
 
-func getInvoicesClient(ctx *cli.Context) (invoicesrpc.InvoicesClient, func()) {
+func getInvoicesClient(ctx *cli.Context) (invoices.InvoicesClient, func()) {
 	conn := getClientConn(ctx, false)
 
 	cleanUp := func() {
 		conn.Close()
 	}
 
-	return invoicesrpc.NewInvoicesClient(conn), cleanUp
+	return invoices.NewInvoicesClient(conn), cleanUp
 }
 
 var settleInvoiceCommand = cli.Command{
@@ -72,7 +72,7 @@ func settleInvoice(ctx *cli.Context) error {
 		return fmt.Errorf("unable to parse preimage: %v", err)
 	}
 
-	invoice := &invoicesrpc.SettleInvoiceMsg{
+	invoice := &invoices.SettleInvoiceMsg{
 		Preimage: preimage,
 	}
 
@@ -125,7 +125,7 @@ func cancelInvoice(ctx *cli.Context) error {
 		return fmt.Errorf("unable to parse preimage: %v", err)
 	}
 
-	invoice := &invoicesrpc.CancelInvoiceMsg{
+	invoice := &invoices.CancelInvoiceMsg{
 		PaymentHash: paymentHash,
 	}
 
@@ -234,7 +234,7 @@ func addHoldInvoice(ctx *cli.Context) error {
 		return fmt.Errorf("unable to parse description_hash: %v", err)
 	}
 
-	invoice := &invoicesrpc.AddHoldInvoiceRequest{
+	invoice := &invoices.AddHoldInvoiceRequest{
 		Memo:            ctx.String("memo"),
 		Hash:            hash,
 		Value:           amt,

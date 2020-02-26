@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"testing"
 
 	"github.com/btcsuite/btcutil"
@@ -12,8 +13,6 @@ import (
 	"github.com/lightningnetwork/lnd/record"
 	"github.com/lightningnetwork/lnd/routing"
 	"github.com/lightningnetwork/lnd/routing/route"
-
-	"github.com/lightningnetwork/lnd/lnrpc"
 )
 
 const (
@@ -70,9 +69,9 @@ func testQueryRoutes(t *testing.T, useMissionControl bool, useMsat bool) {
 		t.Fatal(err)
 	}
 
-	rpcRouteHints := []*lnrpc.RouteHint{
+	rpcRouteHints := []*api.RouteHint{
 		{
-			HopHints: []*lnrpc.HopHint{
+			HopHints: []*api.HopHint{
 				{
 					ChanId: 38484,
 					NodeId: hintNodeKey,
@@ -81,37 +80,37 @@ func testQueryRoutes(t *testing.T, useMissionControl bool, useMsat bool) {
 		},
 	}
 
-	request := &lnrpc.QueryRoutesRequest{
+	request := &api.QueryRoutesRequest{
 		PubKey:         destKey,
 		FinalCltvDelta: 100,
 		IgnoredNodes:   [][]byte{ignoreNodeBytes},
-		IgnoredEdges: []*lnrpc.EdgeLocator{{
+		IgnoredEdges: []*api.EdgeLocator{{
 			ChannelId:        555,
 			DirectionReverse: true,
 		}},
-		IgnoredPairs: []*lnrpc.NodePair{{
+		IgnoredPairs: []*api.NodePair{{
 			From: node1[:],
 			To:   node2[:],
 		}},
 		UseMissionControl: useMissionControl,
 		LastHopPubkey:     lastHop[:],
 		OutgoingChanId:    outgoingChan,
-		DestFeatures:      []lnrpc.FeatureBit{lnrpc.FeatureBit_MPP_OPT},
+		DestFeatures:      []api.FeatureBit{api.FeatureBit_MPP_OPT},
 		RouteHints:        rpcRouteHints,
 	}
 
 	amtSat := int64(100000)
 	if useMsat {
 		request.AmtMsat = amtSat * 1000
-		request.FeeLimit = &lnrpc.FeeLimit{
-			Limit: &lnrpc.FeeLimit_FixedMsat{
+		request.FeeLimit = &api.FeeLimit{
+			Limit: &api.FeeLimit_FixedMsat{
 				FixedMsat: 250000,
 			},
 		}
 	} else {
 		request.Amt = amtSat
-		request.FeeLimit = &lnrpc.FeeLimit{
-			Limit: &lnrpc.FeeLimit_Fixed{
+		request.FeeLimit = &api.FeeLimit{
+			Limit: &api.FeeLimit_Fixed{
 				Fixed: 250,
 			},
 		}
@@ -249,7 +248,7 @@ const (
 
 type unmarshalMPPTest struct {
 	name    string
-	mpp     *lnrpc.MPPRecord
+	mpp     *api.MPPRecord
 	outcome mppOutcome
 }
 
@@ -266,7 +265,7 @@ func TestUnmarshalMPP(t *testing.T) {
 		},
 		{
 			name: "invalid total or addr",
-			mpp: &lnrpc.MPPRecord{
+			mpp: &api.MPPRecord{
 				PaymentAddr:  nil,
 				TotalAmtMsat: 0,
 			},
@@ -274,7 +273,7 @@ func TestUnmarshalMPP(t *testing.T) {
 		},
 		{
 			name: "valid total only",
-			mpp: &lnrpc.MPPRecord{
+			mpp: &api.MPPRecord{
 				PaymentAddr:  nil,
 				TotalAmtMsat: 8,
 			},
@@ -282,7 +281,7 @@ func TestUnmarshalMPP(t *testing.T) {
 		},
 		{
 			name: "valid addr only",
-			mpp: &lnrpc.MPPRecord{
+			mpp: &api.MPPRecord{
 				PaymentAddr:  bytes.Repeat([]byte{0x02}, 32),
 				TotalAmtMsat: 0,
 			},
@@ -290,7 +289,7 @@ func TestUnmarshalMPP(t *testing.T) {
 		},
 		{
 			name: "valid total and invalid addr",
-			mpp: &lnrpc.MPPRecord{
+			mpp: &api.MPPRecord{
 				PaymentAddr:  []byte{0x02},
 				TotalAmtMsat: 8,
 			},
@@ -298,7 +297,7 @@ func TestUnmarshalMPP(t *testing.T) {
 		},
 		{
 			name: "valid total and valid addr",
-			mpp: &lnrpc.MPPRecord{
+			mpp: &api.MPPRecord{
 				PaymentAddr:  bytes.Repeat([]byte{0x02}, 32),
 				TotalAmtMsat: 8,
 			},

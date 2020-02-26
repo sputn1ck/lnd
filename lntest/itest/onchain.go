@@ -6,11 +6,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
+	"github.com/lightningnetwork/lnd/lnrpc/api/wallet"
 
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 	"github.com/lightningnetwork/lnd/lntest"
 	"github.com/lightningnetwork/lnd/lntest/wait"
 	"github.com/lightningnetwork/lnd/sweep"
@@ -37,8 +37,8 @@ func testCPFP(net *lntest.NetworkHarness, t *harnessTest) {
 	}
 
 	// Create an address for Bob to send the coins to.
-	addrReq := &lnrpc.NewAddressRequest{
-		Type: lnrpc.AddressType_WITNESS_PUBKEY_HASH,
+	addrReq := &api.NewAddressRequest{
+		Type: api.AddressType_WITNESS_PUBKEY_HASH,
 	}
 	ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
 	resp, err := net.Bob.NewAddress(ctxt, addrReq)
@@ -48,7 +48,7 @@ func testCPFP(net *lntest.NetworkHarness, t *harnessTest) {
 
 	// Send the coins from Alice to Bob. We should expect a transaction to
 	// be broadcast and seen in the mempool.
-	sendReq := &lnrpc.SendCoinsRequest{
+	sendReq := &api.SendCoinsRequest{
 		Addr:   resp.Address,
 		Amount: btcutil.SatoshiPerBitcoin,
 	}
@@ -88,11 +88,11 @@ func testCPFP(net *lntest.NetworkHarness, t *harnessTest) {
 
 	// We'll attempt to bump the fee of this transaction by performing a
 	// CPFP from Alice's point of view.
-	op := &lnrpc.OutPoint{
+	op := &api.OutPoint{
 		TxidBytes:   txid[:],
 		OutputIndex: uint32(bobOutputIdx),
 	}
-	bumpFeeReq := &walletrpc.BumpFeeRequest{
+	bumpFeeReq := &wallet.BumpFeeRequest{
 		Outpoint:   op,
 		SatPerByte: uint32(sweep.DefaultMaxFeeRate.FeePerKVByte() / 2000),
 	}
@@ -111,7 +111,7 @@ func testCPFP(net *lntest.NetworkHarness, t *harnessTest) {
 
 	// We should also expect to see the output being swept by the
 	// UtxoSweeper. We'll ensure it's using the fee rate specified.
-	pendingSweepsReq := &walletrpc.PendingSweepsRequest{}
+	pendingSweepsReq := &wallet.PendingSweepsRequest{}
 	ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
 	pendingSweepsResp, err := net.Bob.WalletKitClient.PendingSweeps(
 		ctxt, pendingSweepsReq,
@@ -142,7 +142,7 @@ func testCPFP(net *lntest.NetworkHarness, t *harnessTest) {
 
 	// The input used to CPFP should no longer be pending.
 	err = wait.NoError(func() error {
-		req := &walletrpc.PendingSweepsRequest{}
+		req := &wallet.PendingSweepsRequest{}
 		ctxt, _ = context.WithTimeout(ctxb, defaultTimeout)
 		resp, err := net.Bob.WalletKitClient.PendingSweeps(ctxt, req)
 		if err != nil {

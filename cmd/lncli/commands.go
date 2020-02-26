@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
+	"github.com/lightningnetwork/lnd/lnrpc/api/router"
 	"io"
 	"io/ioutil"
 	"math"
@@ -23,8 +25,6 @@ import (
 	"github.com/lightninglabs/protobuf-hex-display/json"
 	"github.com/lightninglabs/protobuf-hex-display/jsonpb"
 	"github.com/lightninglabs/protobuf-hex-display/proto"
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/record"
 	"github.com/lightningnetwork/lnd/routing/route"
@@ -128,19 +128,19 @@ func newAddress(ctx *cli.Context) error {
 
 	// Map the string encoded address type, to the concrete typed address
 	// type enum. An unrecognized address type will result in an error.
-	var addrType lnrpc.AddressType
+	var addrType api.AddressType
 	switch stringAddrType { // TODO(roasbeef): make them ints on the cli?
 	case "p2wkh":
-		addrType = lnrpc.AddressType_WITNESS_PUBKEY_HASH
+		addrType = api.AddressType_WITNESS_PUBKEY_HASH
 	case "np2wkh":
-		addrType = lnrpc.AddressType_NESTED_PUBKEY_HASH
+		addrType = api.AddressType_NESTED_PUBKEY_HASH
 	default:
 		return fmt.Errorf("invalid address type %v, support address type "+
 			"are: p2wkh and np2wkh", stringAddrType)
 	}
 
 	ctxb := context.Background()
-	addr, err := client.NewAddress(ctxb, &lnrpc.NewAddressRequest{
+	addr, err := client.NewAddress(ctxb, &api.NewAddressRequest{
 		Type: addrType,
 	})
 	if err != nil {
@@ -185,7 +185,7 @@ func estimateFees(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	resp, err := client.EstimateFee(ctxb, &lnrpc.EstimateFeeRequest{
+	resp, err := client.EstimateFee(ctxb, &api.EstimateFeeRequest{
 		AddrToAmount: amountToAddr,
 		TargetConf:   int32(ctx.Int64("conf_target")),
 	})
@@ -292,7 +292,7 @@ func sendCoins(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.SendCoinsRequest{
+	req := &api.SendCoinsRequest{
 		Addr:       addr,
 		Amount:     amt,
 		TargetConf: int32(ctx.Int64("conf_target")),
@@ -402,7 +402,7 @@ func listUnspent(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.ListUnspentRequest{
+	req := &api.ListUnspentRequest{
 		MinConfs: int32(minConfirms),
 		MaxConfs: int32(maxConfirms),
 	}
@@ -474,7 +474,7 @@ func sendMany(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	txid, err := client.SendMany(ctxb, &lnrpc.SendManyRequest{
+	txid, err := client.SendMany(ctxb, &api.SendManyRequest{
 		AddrToAmount: amountToAddr,
 		TargetConf:   int32(ctx.Int64("conf_target")),
 		SatPerByte:   ctx.Int64("sat_per_byte"),
@@ -515,11 +515,11 @@ func connectPeer(ctx *cli.Context) error {
 			"pubkey@host:port")
 	}
 
-	addr := &lnrpc.LightningAddress{
+	addr := &api.LightningAddress{
 		Pubkey: splitAddr[0],
 		Host:   splitAddr[1],
 	}
-	req := &lnrpc.ConnectPeerRequest{
+	req := &api.ConnectPeerRequest{
 		Addr: addr,
 		Perm: ctx.Bool("perm"),
 	}
@@ -563,7 +563,7 @@ func disconnectPeer(ctx *cli.Context) error {
 		return fmt.Errorf("must specify target public key")
 	}
 
-	req := &lnrpc.DisconnectPeerRequest{
+	req := &api.DisconnectPeerRequest{
 		PubKey: pubKey,
 	}
 
@@ -696,7 +696,7 @@ func openChannel(ctx *cli.Context) error {
 	}
 
 	minConfs := int32(ctx.Uint64("min_confs"))
-	req := &lnrpc.OpenChannelRequest{
+	req := &api.OpenChannelRequest{
 		TargetConf:       int32(ctx.Int64("conf_target")),
 		SatPerByte:       ctx.Int64("sat_per_byte"),
 		MinHtlcMsat:      ctx.Int64("min_htlc_msat"),
@@ -729,12 +729,12 @@ func openChannel(ctx *cli.Context) error {
 	// than the peer_id, we can check if the host:port was also set to
 	// connect to it before opening the channel.
 	if req.NodePubkey != nil && ctx.IsSet("connect") {
-		addr := &lnrpc.LightningAddress{
+		addr := &api.LightningAddress{
 			Pubkey: hex.EncodeToString(req.NodePubkey),
 			Host:   ctx.String("connect"),
 		}
 
-		req := &lnrpc.ConnectPeerRequest{
+		req := &api.ConnectPeerRequest{
 			Addr: addr,
 			Perm: false,
 		}
@@ -786,7 +786,7 @@ func openChannel(ctx *cli.Context) error {
 		}
 
 		switch update := resp.Update.(type) {
-		case *lnrpc.OpenStatusUpdate_ChanPending:
+		case *api.OpenStatusUpdate_ChanPending:
 			txid, err := chainhash.NewHash(update.ChanPending.Txid)
 			if err != nil {
 				return err
@@ -803,7 +803,7 @@ func openChannel(ctx *cli.Context) error {
 				return nil
 			}
 
-		case *lnrpc.OpenStatusUpdate_ChanOpen:
+		case *api.OpenStatusUpdate_ChanOpen:
 			channelPoint := update.ChanOpen.ChannelPoint
 
 			// A channel point's funding txid can be get/set as a
@@ -811,9 +811,9 @@ func openChannel(ctx *cli.Context) error {
 			// decode it.
 			var txidHash []byte
 			switch channelPoint.GetFundingTxid().(type) {
-			case *lnrpc.ChannelPoint_FundingTxidBytes:
+			case *api.ChannelPoint_FundingTxidBytes:
 				txidHash = channelPoint.GetFundingTxidBytes()
-			case *lnrpc.ChannelPoint_FundingTxidStr:
+			case *api.ChannelPoint_FundingTxidStr:
 				s := channelPoint.GetFundingTxidStr()
 				h, err := chainhash.NewHashFromStr(s)
 				if err != nil {
@@ -924,7 +924,7 @@ func closeChannel(ctx *cli.Context) error {
 	}
 
 	// TODO(roasbeef): implement time deadline within server
-	req := &lnrpc.CloseChannelRequest{
+	req := &api.CloseChannelRequest{
 		ChannelPoint:    channelPoint,
 		Force:           ctx.Bool("force"),
 		TargetConf:      int32(ctx.Int64("conf_target")),
@@ -968,7 +968,7 @@ func closeChannel(ctx *cli.Context) error {
 // transaction ID is sent through `txidChan` as soon as it is broadcasted to the
 // network. The block boolean is used to determine if we should block until the
 // closing transaction receives all of its required confirmations.
-func executeChannelClose(client lnrpc.LightningClient, req *lnrpc.CloseChannelRequest,
+func executeChannelClose(client api.LightningClient, req *api.CloseChannelRequest,
 	txidChan chan<- string, block bool) error {
 
 	stream, err := client.CloseChannel(context.Background(), req)
@@ -985,7 +985,7 @@ func executeChannelClose(client lnrpc.LightningClient, req *lnrpc.CloseChannelRe
 		}
 
 		switch update := resp.Update.(type) {
-		case *lnrpc.CloseStatusUpdate_ClosePending:
+		case *api.CloseStatusUpdate_ClosePending:
 			closingHash := update.ClosePending.Txid
 			txid, err := chainhash.NewHash(closingHash)
 			if err != nil {
@@ -997,7 +997,7 @@ func executeChannelClose(client lnrpc.LightningClient, req *lnrpc.CloseChannelRe
 			if !block {
 				return nil
 			}
-		case *lnrpc.CloseStatusUpdate_ChanClose:
+		case *api.CloseStatusUpdate_ChanClose:
 			return nil
 		}
 	}
@@ -1057,7 +1057,7 @@ func closeAllChannels(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	listReq := &lnrpc.ListChannelsRequest{}
+	listReq := &api.ListChannelsRequest{}
 	openChannels, err := client.ListChannels(context.Background(), listReq)
 	if err != nil {
 		return fmt.Errorf("unable to fetch open channels: %v", err)
@@ -1067,7 +1067,7 @@ func closeAllChannels(ctx *cli.Context) error {
 		return errors.New("no open channels to close")
 	}
 
-	var channelsToClose []*lnrpc.Channel
+	var channelsToClose []*api.Channel
 
 	switch {
 	case ctx.Bool("force") && ctx.Bool("inactive_only"):
@@ -1153,7 +1153,7 @@ func closeAllChannels(ctx *cli.Context) error {
 	// they come.
 	resultChan := make(chan result, len(channelsToClose))
 	for _, channel := range channelsToClose {
-		go func(channel *lnrpc.Channel) {
+		go func(channel *api.Channel) {
 			res := result{}
 			res.RemotePubKey = channel.RemotePubkey
 			res.ChannelPoint = channel.ChannelPoint
@@ -1176,9 +1176,9 @@ func closeAllChannels(ctx *cli.Context) error {
 				return
 			}
 
-			req := &lnrpc.CloseChannelRequest{
-				ChannelPoint: &lnrpc.ChannelPoint{
-					FundingTxid: &lnrpc.ChannelPoint_FundingTxidStr{
+			req := &api.CloseChannelRequest{
+				ChannelPoint: &api.ChannelPoint{
+					FundingTxid: &api.ChannelPoint_FundingTxidStr{
 						FundingTxidStr: s[0],
 					},
 					OutputIndex: uint32(index),
@@ -1280,7 +1280,7 @@ func abandonChannel(ctx *cli.Context) error {
 		return err
 	}
 
-	req := &lnrpc.AbandonChannelRequest{
+	req := &api.AbandonChannelRequest{
 		ChannelPoint: channelPoint,
 	}
 
@@ -1295,18 +1295,18 @@ func abandonChannel(ctx *cli.Context) error {
 
 // parseChannelPoint parses a funding txid and output index from the command
 // line. Both named options as well as unnamed parameters are supported.
-func parseChannelPoint(ctx *cli.Context) (*lnrpc.ChannelPoint, error) {
-	channelPoint := &lnrpc.ChannelPoint{}
+func parseChannelPoint(ctx *cli.Context) (*api.ChannelPoint, error) {
+	channelPoint := &api.ChannelPoint{}
 
 	args := ctx.Args()
 
 	switch {
 	case ctx.IsSet("funding_txid"):
-		channelPoint.FundingTxid = &lnrpc.ChannelPoint_FundingTxidStr{
+		channelPoint.FundingTxid = &api.ChannelPoint_FundingTxidStr{
 			FundingTxidStr: ctx.String("funding_txid"),
 		}
 	case args.Present():
-		channelPoint.FundingTxid = &lnrpc.ChannelPoint_FundingTxidStr{
+		channelPoint.FundingTxid = &api.ChannelPoint_FundingTxidStr{
 			FundingTxidStr: args.First(),
 		}
 		args = args.Tail()
@@ -1342,7 +1342,7 @@ func listPeers(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.ListPeersRequest{}
+	req := &api.ListPeersRequest{}
 	resp, err := client.ListPeers(ctxb, req)
 	if err != nil {
 		return err
@@ -1433,7 +1433,7 @@ func create(ctx *cli.Context) error {
 	defer cleanUp()
 
 	var (
-		chanBackups *lnrpc.ChanBackupSnapshot
+		chanBackups *api.ChanBackupSnapshot
 
 		// We use var restoreSCB to track if we will be including an SCB
 		// recovery in the init wallet request.
@@ -1496,14 +1496,14 @@ func create(ctx *cli.Context) error {
 			switch {
 			case backups.GetChanBackups() != nil:
 				singleBackup := backups.GetChanBackups()
-				chanBackups = &lnrpc.ChanBackupSnapshot{
+				chanBackups = &api.ChanBackupSnapshot{
 					SingleChanBackups: singleBackup,
 				}
 
 			case backups.GetMultiChanBackup() != nil:
 				multiBackup := backups.GetMultiChanBackup()
-				chanBackups = &lnrpc.ChanBackupSnapshot{
-					MultiChanBackup: &lnrpc.MultiChanBackup{
+				chanBackups = &api.ChanBackupSnapshot{
+					MultiChanBackup: &api.MultiChanBackup{
 						MultiChanBackup: multiBackup,
 					},
 				}
@@ -1647,7 +1647,7 @@ mnemonicCheck:
 		fmt.Println("Generating fresh cipher seed...")
 		fmt.Println()
 
-		genSeedReq := &lnrpc.GenSeedRequest{
+		genSeedReq := &api.GenSeedRequest{
 			AezeedPassphrase: aezeedPass,
 		}
 		seedResp, err := client.GenSeed(ctxb, genSeedReq)
@@ -1682,7 +1682,7 @@ mnemonicCheck:
 
 	// With either the user's prior cipher seed, or a newly generated one,
 	// we'll go ahead and initialize the wallet.
-	req := &lnrpc.InitWalletRequest{
+	req := &api.InitWalletRequest{
 		WalletPassword:     walletPassword,
 		CipherSeedMnemonic: cipherSeedMnemonic,
 		AezeedPassphrase:   aezeedPass,
@@ -1799,7 +1799,7 @@ func unlock(ctx *cli.Context) error {
 		recoveryWindow = int32(window)
 	}
 
-	req := &lnrpc.UnlockWalletRequest{
+	req := &api.UnlockWalletRequest{
 		WalletPassword: pw,
 		RecoveryWindow: recoveryWindow,
 	}
@@ -1862,7 +1862,7 @@ func changePassword(ctx *cli.Context) error {
 		return fmt.Errorf("passwords don't match")
 	}
 
-	req := &lnrpc.ChangePasswordRequest{
+	req := &api.ChangePasswordRequest{
 		CurrentPassword: currentPw,
 		NewPassword:     newPw,
 	}
@@ -1887,7 +1887,7 @@ func walletBalance(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.WalletBalanceRequest{}
+	req := &api.WalletBalanceRequest{}
 	resp, err := client.WalletBalance(ctxb, req)
 	if err != nil {
 		return err
@@ -1910,7 +1910,7 @@ func channelBalance(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.ChannelBalanceRequest{}
+	req := &api.ChannelBalanceRequest{}
 	resp, err := client.ChannelBalance(ctxb, req)
 	if err != nil {
 		return err
@@ -1936,7 +1936,7 @@ func getInfo(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.GetInfoRequest{}
+	req := &api.GetInfoRequest{}
 	resp, err := client.GetInfo(ctxb, req)
 	if err != nil {
 		return err
@@ -1958,7 +1958,7 @@ func pendingChannels(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.PendingChannelsRequest{}
+	req := &api.PendingChannelsRequest{}
 	resp, err := client.PendingChannels(ctxb, req)
 	if err != nil {
 		return err
@@ -1999,7 +1999,7 @@ func listChannels(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.ListChannelsRequest{
+	req := &api.ListChannelsRequest{
 		ActiveOnly:   ctx.Bool("active_only"),
 		InactiveOnly: ctx.Bool("inactive_only"),
 		PublicOnly:   ctx.Bool("public_only"),
@@ -2061,7 +2061,7 @@ func closedChannels(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.ClosedChannelsRequest{
+	req := &api.ClosedChannelsRequest{
 		Cooperative:     ctx.Bool("cooperative"),
 		LocalForce:      ctx.Bool("local_force"),
 		RemoteForce:     ctx.Bool("remote_force"),
@@ -2188,20 +2188,20 @@ var sendPaymentCommand = cli.Command{
 
 // retrieveFeeLimit retrieves the fee limit based on the different fee limit
 // flags passed.
-func retrieveFeeLimit(ctx *cli.Context) (*lnrpc.FeeLimit, error) {
+func retrieveFeeLimit(ctx *cli.Context) (*api.FeeLimit, error) {
 	switch {
 	case ctx.IsSet("fee_limit") && ctx.IsSet("fee_limit_percent"):
 		return nil, fmt.Errorf("either fee_limit or fee_limit_percent " +
 			"can be set, but not both")
 	case ctx.IsSet("fee_limit"):
-		return &lnrpc.FeeLimit{
-			Limit: &lnrpc.FeeLimit_Fixed{
+		return &api.FeeLimit{
+			Limit: &api.FeeLimit_Fixed{
 				Fixed: ctx.Int64("fee_limit"),
 			},
 		}, nil
 	case ctx.IsSet("fee_limit_percent"):
-		return &lnrpc.FeeLimit{
-			Limit: &lnrpc.FeeLimit_Percent{
+		return &api.FeeLimit{
+			Limit: &api.FeeLimit_Percent{
 				Percent: ctx.Int64("fee_limit_percent"),
 			},
 		}, nil
@@ -2212,7 +2212,7 @@ func retrieveFeeLimit(ctx *cli.Context) (*lnrpc.FeeLimit, error) {
 	return nil, nil
 }
 
-func confirmPayReq(resp *lnrpc.PayReq, amt int64) error {
+func confirmPayReq(resp *api.PayReq, amt int64) error {
 	fmt.Printf("Description: %v\n", resp.GetDescription())
 	fmt.Printf("Amount (in satoshis): %v\n", amt)
 	fmt.Printf("Destination: %v\n", resp.GetDestination())
@@ -2235,7 +2235,7 @@ func sendPayment(ctx *cli.Context) error {
 	// If a payment request was provided, we can exit early since all of the
 	// details of the payment are encoded within the request.
 	if ctx.IsSet("pay_req") {
-		req := &lnrpc.SendRequest{
+		req := &api.SendRequest{
 			PaymentRequest: ctx.String("pay_req"),
 			Amt:            ctx.Int64("amt"),
 		}
@@ -2279,7 +2279,7 @@ func sendPayment(ctx *cli.Context) error {
 		}
 	}
 
-	req := &lnrpc.SendRequest{
+	req := &api.SendRequest{
 		Dest:              destNode,
 		Amt:               amount,
 		DestCustomRecords: make(map[uint64][]byte),
@@ -2339,7 +2339,7 @@ func sendPayment(ctx *cli.Context) error {
 	return sendPaymentRequest(ctx, req)
 }
 
-func sendPaymentRequest(ctx *cli.Context, req *lnrpc.SendRequest) error {
+func sendPaymentRequest(ctx *cli.Context, req *api.SendRequest) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
@@ -2397,7 +2397,7 @@ func sendPaymentRequest(ctx *cli.Context, req *lnrpc.SendRequest) error {
 	amt := req.Amt
 
 	if req.PaymentRequest != "" {
-		req := &lnrpc.PayReqString{PayReq: req.PaymentRequest}
+		req := &api.PayReqString{PayReq: req.PaymentRequest}
 		resp, err := client.DecodePayReq(context.Background(), req)
 		if err != nil {
 			return err
@@ -2472,7 +2472,7 @@ func payInvoice(ctx *cli.Context) error {
 		return fmt.Errorf("pay_req argument missing")
 	}
 
-	req := &lnrpc.SendRequest{
+	req := &api.SendRequest{
 		PaymentRequest:    payReq,
 		Amt:               ctx.Int64("amt"),
 		DestCustomRecords: make(map[uint64][]byte),
@@ -2584,8 +2584,8 @@ func sendToRoute(ctx *cli.Context) error {
 	// Try to parse the provided json both in the legacy QueryRoutes format
 	// that contains a list of routes and the single route BuildRoute
 	// format.
-	var route *lnrpc.Route
-	routes := &lnrpc.QueryRoutesResponse{}
+	var route *api.Route
+	routes := &api.QueryRoutesResponse{}
 	err = jsonpb.UnmarshalString(jsonRoutes, routes)
 	if err == nil {
 		if len(routes.Routes) == 0 {
@@ -2599,7 +2599,7 @@ func sendToRoute(ctx *cli.Context) error {
 
 		route = routes.Routes[0]
 	} else {
-		routes := &routerrpc.BuildRouteResponse{}
+		routes := &router.BuildRouteResponse{}
 		err = jsonpb.UnmarshalString(jsonRoutes, routes)
 		if err != nil {
 			return fmt.Errorf("unable to unmarshal json string "+
@@ -2609,7 +2609,7 @@ func sendToRoute(ctx *cli.Context) error {
 		route = routes.Route
 	}
 
-	req := &lnrpc.SendToRouteRequest{
+	req := &api.SendToRouteRequest{
 		PaymentHash: rHash,
 		Route:       route,
 	}
@@ -2617,7 +2617,7 @@ func sendToRoute(ctx *cli.Context) error {
 	return sendToRouteRequest(ctx, req)
 }
 
-func sendToRouteRequest(ctx *cli.Context, req *lnrpc.SendToRouteRequest) error {
+func sendToRouteRequest(ctx *cli.Context, req *api.SendToRouteRequest) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
@@ -2737,7 +2737,7 @@ func addInvoice(ctx *cli.Context) error {
 		return fmt.Errorf("unable to parse description_hash: %v", err)
 	}
 
-	invoice := &lnrpc.Invoice{
+	invoice := &api.Invoice{
 		Memo:            ctx.String("memo"),
 		RPreimage:       preimage,
 		Value:           amt,
@@ -2794,7 +2794,7 @@ func lookupInvoice(ctx *cli.Context) error {
 		return fmt.Errorf("unable to decode rhash argument: %v", err)
 	}
 
-	req := &lnrpc.PaymentHash{
+	req := &api.PaymentHash{
 		RHash: rHash,
 	}
 
@@ -2859,7 +2859,7 @@ func listInvoices(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.ListInvoiceRequest{
+	req := &api.ListInvoiceRequest{
 		PendingOnly:    ctx.Bool("pending_only"),
 		IndexOffset:    ctx.Uint64("index_offset"),
 		NumMaxInvoices: ctx.Uint64("max_invoices"),
@@ -2897,7 +2897,7 @@ func describeGraph(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.ChannelGraphRequest{
+	req := &api.ChannelGraphRequest{
 		IncludeUnannounced: ctx.Bool("include_unannounced"),
 	}
 
@@ -2927,7 +2927,7 @@ func listPayments(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.ListPaymentsRequest{
+	req := &api.ListPaymentsRequest{
 		IncludeIncomplete: ctx.Bool("include_incomplete"),
 	}
 
@@ -2978,7 +2978,7 @@ func getChanInfo(ctx *cli.Context) error {
 		return fmt.Errorf("chan_id argument missing")
 	}
 
-	req := &lnrpc.ChanInfoRequest{
+	req := &api.ChanInfoRequest{
 		ChanId: uint64(chanID),
 	}
 
@@ -3029,7 +3029,7 @@ func getNodeInfo(ctx *cli.Context) error {
 		return fmt.Errorf("pub_key argument missing")
 	}
 
-	req := &lnrpc.NodeInfoRequest{
+	req := &api.NodeInfoRequest{
 		PubKey:          pubKey,
 		IncludeChannels: ctx.Bool("include_channels"),
 	}
@@ -3123,7 +3123,7 @@ func queryRoutes(ctx *cli.Context) error {
 		return err
 	}
 
-	req := &lnrpc.QueryRoutesRequest{
+	req := &api.QueryRoutesRequest{
 		PubKey:            dest,
 		Amt:               amt,
 		FeeLimit:          feeLimit,
@@ -3156,7 +3156,7 @@ func getNetworkInfo(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.NetworkInfoRequest{}
+	req := &api.NetworkInfoRequest{}
 
 	netInfo, err := client.GetNetworkInfo(ctxb, req)
 	if err != nil {
@@ -3191,7 +3191,7 @@ func debugLevel(ctx *cli.Context) error {
 	ctxb := context.Background()
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
-	req := &lnrpc.DebugLevelRequest{
+	req := &api.DebugLevelRequest{
 		Show:      ctx.Bool("show"),
 		LevelSpec: ctx.String("level"),
 	}
@@ -3236,7 +3236,7 @@ func decodePayReq(ctx *cli.Context) error {
 		return fmt.Errorf("pay_req argument missing")
 	}
 
-	resp, err := client.DecodePayReq(ctxb, &lnrpc.PayReqString{
+	resp, err := client.DecodePayReq(ctxb, &api.PayReqString{
 		PayReq: payreq,
 	})
 	if err != nil {
@@ -3260,7 +3260,7 @@ func listChainTxns(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	resp, err := client.GetTransactions(ctxb, &lnrpc.GetTransactionsRequest{})
+	resp, err := client.GetTransactions(ctxb, &api.GetTransactionsRequest{})
 
 	if err != nil {
 		return err
@@ -3284,7 +3284,7 @@ func stopDaemon(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	_, err := client.StopDaemon(ctxb, &lnrpc.StopRequest{})
+	_, err := client.StopDaemon(ctxb, &api.StopRequest{})
 	if err != nil {
 		return err
 	}
@@ -3327,7 +3327,7 @@ func signMessage(ctx *cli.Context) error {
 		return fmt.Errorf("msg argument missing")
 	}
 
-	resp, err := client.SignMessage(ctxb, &lnrpc.SignMessageRequest{Msg: msg})
+	resp, err := client.SignMessage(ctxb, &api.SignMessageRequest{Msg: msg})
 	if err != nil {
 		return err
 	}
@@ -3391,7 +3391,7 @@ func verifyMessage(ctx *cli.Context) error {
 		return fmt.Errorf("signature argument missing")
 	}
 
-	req := &lnrpc.VerifyMessageRequest{Msg: msg, Signature: sig}
+	req := &api.VerifyMessageRequest{Msg: msg, Signature: sig}
 	resp, err := client.VerifyMessage(ctxb, req)
 	if err != nil {
 		return err
@@ -3416,7 +3416,7 @@ func feeReport(ctx *cli.Context) error {
 	client, cleanUp := getClient(ctx)
 	defer cleanUp()
 
-	req := &lnrpc.FeeReportRequest{}
+	req := &api.FeeReportRequest{}
 	resp, err := client.FeeReport(ctxb, req)
 	if err != nil {
 		return err
@@ -3479,7 +3479,7 @@ var updateChannelPolicyCommand = cli.Command{
 	Action: actionDecorator(updateChannelPolicy),
 }
 
-func parseChanPoint(s string) (*lnrpc.ChannelPoint, error) {
+func parseChanPoint(s string) (*api.ChannelPoint, error) {
 	split := strings.Split(s, ":")
 	if len(split) != 2 {
 		return nil, fmt.Errorf("expecting chan_point to be in format of: " +
@@ -3496,8 +3496,8 @@ func parseChanPoint(s string) (*lnrpc.ChannelPoint, error) {
 		return nil, fmt.Errorf("unable to parse hex string: %v", err)
 	}
 
-	return &lnrpc.ChannelPoint{
-		FundingTxid: &lnrpc.ChannelPoint_FundingTxidBytes{
+	return &api.ChannelPoint{
+		FundingTxid: &api.ChannelPoint_FundingTxidBytes{
 			FundingTxidBytes: txid[:],
 		},
 		OutputIndex: uint32(index),
@@ -3560,7 +3560,7 @@ func updateChannelPolicy(ctx *cli.Context) error {
 	}
 
 	var (
-		chanPoint    *lnrpc.ChannelPoint
+		chanPoint    *api.ChannelPoint
 		chanPointStr string
 	)
 
@@ -3578,7 +3578,7 @@ func updateChannelPolicy(ctx *cli.Context) error {
 		}
 	}
 
-	req := &lnrpc.PolicyUpdateRequest{
+	req := &api.PolicyUpdateRequest{
 		BaseFeeMsat:   baseFee,
 		FeeRate:       feeRate,
 		TimeLockDelta: uint32(timeLockDelta),
@@ -3591,11 +3591,11 @@ func updateChannelPolicy(ctx *cli.Context) error {
 	}
 
 	if chanPoint != nil {
-		req.Scope = &lnrpc.PolicyUpdateRequest_ChanPoint{
+		req.Scope = &api.PolicyUpdateRequest_ChanPoint{
 			ChanPoint: chanPoint,
 		}
 	} else {
-		req.Scope = &lnrpc.PolicyUpdateRequest_Global{
+		req.Scope = &api.PolicyUpdateRequest_Global{
 			Global: true,
 		}
 	}
@@ -3713,7 +3713,7 @@ func forwardingHistory(ctx *cli.Context) error {
 		args = args.Tail()
 	}
 
-	req := &lnrpc.ForwardingHistoryRequest{
+	req := &api.ForwardingHistoryRequest{
 		StartTime:    startTime,
 		EndTime:      endTime,
 		IndexOffset:  indexOffset,
@@ -3816,7 +3816,7 @@ func exportChanBackup(ctx *cli.Context) error {
 		}
 
 		chanBackup, err := client.ExportChannelBackup(
-			ctxb, &lnrpc.ExportChannelBackupRequest{
+			ctxb, &api.ExportChannelBackupRequest{
 				ChanPoint: chanPointRPC,
 			},
 		)
@@ -3851,7 +3851,7 @@ func exportChanBackup(ctx *cli.Context) error {
 	}
 
 	chanBackup, err := client.ExportAllChannelBackups(
-		ctxb, &lnrpc.ChanBackupExportRequest{},
+		ctxb, &api.ChanBackupExportRequest{},
 	)
 	if err != nil {
 		return err
@@ -3942,13 +3942,13 @@ func verifyChanBackup(ctx *cli.Context) error {
 		return err
 	}
 
-	verifyReq := lnrpc.ChanBackupSnapshot{}
+	verifyReq := api.ChanBackupSnapshot{}
 
 	if backups.GetChanBackups() != nil {
 		verifyReq.SingleChanBackups = backups.GetChanBackups()
 	}
 	if backups.GetMultiChanBackup() != nil {
-		verifyReq.MultiChanBackup = &lnrpc.MultiChanBackup{
+		verifyReq.MultiChanBackup = &api.MultiChanBackup{
 			MultiChanBackup: backups.GetMultiChanBackup(),
 		}
 	}
@@ -4012,7 +4012,7 @@ var restoreChanBackupCommand = cli.Command{
 // backup from a CLI command and it is missing.
 var errMissingChanBackup = errors.New("missing channel backup")
 
-func parseChanBackups(ctx *cli.Context) (*lnrpc.RestoreChanBackupRequest, error) {
+func parseChanBackups(ctx *cli.Context) (*api.RestoreChanBackupRequest, error) {
 	switch {
 	case ctx.IsSet("single_backup"):
 		packedBackup, err := hex.DecodeString(
@@ -4023,10 +4023,10 @@ func parseChanBackups(ctx *cli.Context) (*lnrpc.RestoreChanBackupRequest, error)
 				"backup: %v", err)
 		}
 
-		return &lnrpc.RestoreChanBackupRequest{
-			Backup: &lnrpc.RestoreChanBackupRequest_ChanBackups{
-				ChanBackups: &lnrpc.ChannelBackups{
-					ChanBackups: []*lnrpc.ChannelBackup{
+		return &api.RestoreChanBackupRequest{
+			Backup: &api.RestoreChanBackupRequest_ChanBackups{
+				ChanBackups: &api.ChannelBackups{
+					ChanBackups: []*api.ChannelBackup{
 						{
 							ChanBackup: packedBackup,
 						},
@@ -4044,8 +4044,8 @@ func parseChanBackups(ctx *cli.Context) (*lnrpc.RestoreChanBackupRequest, error)
 				"backup: %v", err)
 		}
 
-		return &lnrpc.RestoreChanBackupRequest{
-			Backup: &lnrpc.RestoreChanBackupRequest_MultiChanBackup{
+		return &api.RestoreChanBackupRequest{
+			Backup: &api.RestoreChanBackupRequest_MultiChanBackup{
 				MultiChanBackup: packedMulti,
 			},
 		}, nil
@@ -4057,8 +4057,8 @@ func parseChanBackups(ctx *cli.Context) (*lnrpc.RestoreChanBackupRequest, error)
 				"backup: %v", err)
 		}
 
-		return &lnrpc.RestoreChanBackupRequest{
-			Backup: &lnrpc.RestoreChanBackupRequest_MultiChanBackup{
+		return &api.RestoreChanBackupRequest{
+			Backup: &api.RestoreChanBackupRequest_MultiChanBackup{
 				MultiChanBackup: packedMulti,
 			},
 		}, nil
@@ -4079,7 +4079,7 @@ func restoreChanBackup(ctx *cli.Context) error {
 		return nil
 	}
 
-	var req lnrpc.RestoreChanBackupRequest
+	var req api.RestoreChanBackupRequest
 
 	backups, err := parseChanBackups(ctx)
 	if err != nil {

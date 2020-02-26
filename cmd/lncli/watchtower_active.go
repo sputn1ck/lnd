@@ -4,8 +4,8 @@ package main
 
 import (
 	"context"
+	"github.com/lightningnetwork/lnd/lnrpc/api/watchtower"
 
-	"github.com/lightningnetwork/lnd/lnrpc/watchtowerrpc"
 	"github.com/urfave/cli"
 )
 
@@ -22,12 +22,12 @@ func watchtowerCommands() []cli.Command {
 	}
 }
 
-func getWatchtowerClient(ctx *cli.Context) (watchtowerrpc.WatchtowerClient, func()) {
+func getWatchtowerClient(ctx *cli.Context) (watchtower.WatchtowerClient, func()) {
 	conn := getClientConn(ctx, false)
 	cleanup := func() {
 		conn.Close()
 	}
-	return watchtowerrpc.NewWatchtowerClient(conn), cleanup
+	return watchtower.NewWatchtowerClient(conn), cleanup
 }
 
 var towerInfoCommand = cli.Command{
@@ -44,7 +44,7 @@ func towerInfo(ctx *cli.Context) error {
 	client, cleanup := getWatchtowerClient(ctx)
 	defer cleanup()
 
-	req := &watchtowerrpc.GetInfoRequest{}
+	req := &watchtower.GetInfoRequest{}
 	resp, err := client.GetInfo(context.Background(), req)
 	if err != nil {
 		return err

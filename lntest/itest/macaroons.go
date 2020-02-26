@@ -4,9 +4,9 @@ package itest
 
 import (
 	"context"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 	"strings"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lntest"
 	"github.com/lightningnetwork/lnd/macaroons"
 	"gopkg.in/macaroon.v2"
@@ -25,8 +25,8 @@ func errContains(err error, str string) bool {
 func testMacaroonAuthentication(net *lntest.NetworkHarness, t *harnessTest) {
 	var (
 		ctxb       = context.Background()
-		infoReq    = &lnrpc.GetInfoRequest{}
-		newAddrReq = &lnrpc.NewAddressRequest{
+		infoReq    = &api.GetInfoRequest{}
+		newAddrReq = &api.NewAddressRequest{
 			Type: AddrTypeWitnessPubkeyHash,
 		}
 		testNode = net.Alice
@@ -41,7 +41,7 @@ func testMacaroonAuthentication(net *lntest.NetworkHarness, t *harnessTest) {
 	defer conn.Close()
 	ctxt, cancel := context.WithTimeout(ctxb, defaultTimeout)
 	defer cancel()
-	noMacConnection := lnrpc.NewLightningClient(conn)
+	noMacConnection := api.NewLightningClient(conn)
 	_, err = noMacConnection.GetInfo(ctxt, infoReq)
 	if err == nil || !errContains(err, "expected 1 macaroon") {
 		t.Fatalf("expected to get an error when connecting without " +
@@ -60,7 +60,7 @@ func testMacaroonAuthentication(net *lntest.NetworkHarness, t *harnessTest) {
 	defer conn.Close()
 	ctxt, cancel = context.WithTimeout(ctxb, defaultTimeout)
 	defer cancel()
-	invalidMacConnection := lnrpc.NewLightningClient(conn)
+	invalidMacConnection := api.NewLightningClient(conn)
 	_, err = invalidMacConnection.GetInfo(ctxt, infoReq)
 	if err == nil || !errContains(err, "cannot get macaroon") {
 		t.Fatalf("expected to get an error when connecting with an " +
@@ -81,7 +81,7 @@ func testMacaroonAuthentication(net *lntest.NetworkHarness, t *harnessTest) {
 	defer conn.Close()
 	ctxt, cancel = context.WithTimeout(ctxb, defaultTimeout)
 	defer cancel()
-	readonlyMacConnection := lnrpc.NewLightningClient(conn)
+	readonlyMacConnection := api.NewLightningClient(conn)
 	_, err = readonlyMacConnection.NewAddress(ctxt, newAddrReq)
 	if err == nil || !errContains(err, "permission denied") {
 		t.Fatalf("expected to get an error when connecting to " +
@@ -104,7 +104,7 @@ func testMacaroonAuthentication(net *lntest.NetworkHarness, t *harnessTest) {
 	defer conn.Close()
 	ctxt, cancel = context.WithTimeout(ctxb, defaultTimeout)
 	defer cancel()
-	timeoutMacConnection := lnrpc.NewLightningClient(conn)
+	timeoutMacConnection := api.NewLightningClient(conn)
 	_, err = timeoutMacConnection.GetInfo(ctxt, infoReq)
 	if err == nil || !errContains(err, "macaroon has expired") {
 		t.Fatalf("expected to get an error when connecting with an " +
@@ -126,7 +126,7 @@ func testMacaroonAuthentication(net *lntest.NetworkHarness, t *harnessTest) {
 	defer conn.Close()
 	ctxt, cancel = context.WithTimeout(ctxb, defaultTimeout)
 	defer cancel()
-	invalidIpAddrMacConnection := lnrpc.NewLightningClient(conn)
+	invalidIpAddrMacConnection := api.NewLightningClient(conn)
 	_, err = invalidIpAddrMacConnection.GetInfo(ctxt, infoReq)
 	if err == nil || !errContains(err, "different IP address") {
 		t.Fatalf("expected to get an error when connecting with an " +
@@ -156,7 +156,7 @@ func testMacaroonAuthentication(net *lntest.NetworkHarness, t *harnessTest) {
 	defer conn.Close()
 	ctxt, cancel = context.WithTimeout(ctxb, defaultTimeout)
 	defer cancel()
-	adminMacConnection := lnrpc.NewLightningClient(conn)
+	adminMacConnection := api.NewLightningClient(conn)
 	res, err := adminMacConnection.NewAddress(ctxt, newAddrReq)
 	if err != nil {
 		t.Fatalf("unable to get new address with valid macaroon: %v",

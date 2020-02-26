@@ -2,6 +2,7 @@ package lnrpc
 
 import (
 	"errors"
+	"github.com/lightningnetwork/lnd/lnrpc/api"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/lnwire"
@@ -18,20 +19,20 @@ var (
 // CalculateFeeLimit returns the fee limit in millisatoshis. If a percentage
 // based fee limit has been requested, we'll factor in the ratio provided with
 // the amount of the payment.
-func CalculateFeeLimit(feeLimit *FeeLimit,
+func CalculateFeeLimit(feeLimit *api.FeeLimit,
 	amount lnwire.MilliSatoshi) lnwire.MilliSatoshi {
 
 	switch feeLimit.GetLimit().(type) {
 
-	case *FeeLimit_Fixed:
+	case *api.FeeLimit_Fixed:
 		return lnwire.NewMSatFromSatoshis(
 			btcutil.Amount(feeLimit.GetFixed()),
 		)
 
-	case *FeeLimit_FixedMsat:
+	case *api.FeeLimit_FixedMsat:
 		return lnwire.MilliSatoshi(feeLimit.GetFixedMsat())
 
-	case *FeeLimit_Percent:
+	case *api.FeeLimit_Percent:
 		return amount * lnwire.MilliSatoshi(feeLimit.GetPercent()) / 100
 
 	default:

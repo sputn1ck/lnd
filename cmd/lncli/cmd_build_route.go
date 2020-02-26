@@ -6,10 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api/router"
 	"strings"
 
 	"github.com/lightningnetwork/lnd"
-	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/urfave/cli"
 )
@@ -48,7 +48,7 @@ func buildRoute(ctx *cli.Context) error {
 	conn := getClientConn(ctx, false)
 	defer conn.Close()
 
-	client := routerrpc.NewRouterClient(conn)
+	client := router.NewRouterClient(conn)
 
 	if !ctx.IsSet("hops") {
 		return errors.New("hops required")
@@ -75,7 +75,7 @@ func buildRoute(ctx *cli.Context) error {
 	}
 
 	// Call BuildRoute rpc.
-	req := &routerrpc.BuildRouteRequest{
+	req := &router.BuildRouteRequest{
 		AmtMsat:        amtMsat,
 		FinalCltvDelta: int32(ctx.Int64("final_cltv_delta")),
 		HopPubkeys:     rpcHops,

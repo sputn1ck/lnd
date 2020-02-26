@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	fmt "fmt"
+	"github.com/lightningnetwork/lnd/lnrpc/api/watchtower"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"google.golang.org/grpc"
@@ -42,7 +43,7 @@ type Handler struct {
 
 // A compile time check to ensure that Handler fully implements the Handler gRPC
 // service.
-var _ WatchtowerServer = (*Handler)(nil)
+var _ watchtower.WatchtowerServer = (*Handler)(nil)
 
 // New returns a new instance of the Watchtower sub-server. We also return the
 // set of permissions for the macaroons that we may create within this method.
@@ -83,7 +84,7 @@ func (c *Handler) Name() string {
 func (c *Handler) RegisterWithRootServer(grpcServer *grpc.Server) error {
 	// We make sure that we register it with the main gRPC server to ensure
 	// all our methods are routed properly.
-	RegisterWatchtowerServer(grpcServer, c)
+	watchtower.RegisterWatchtowerServer(grpcServer, c)
 
 	log.Debugf("Watchtower RPC server successfully register with root " +
 		"gRPC server")
@@ -96,7 +97,7 @@ func (c *Handler) RegisterWithRootServer(grpcServer *grpc.Server) error {
 // included will be considered when dialing it for session negotiations and
 // backups.
 func (c *Handler) GetInfo(ctx context.Context,
-	req *GetInfoRequest) (*GetInfoResponse, error) {
+	req *watchtower.GetInfoRequest) (*watchtower.GetInfoResponse, error) {
 
 	if err := c.isActive(); err != nil {
 		return nil, err
@@ -114,7 +115,7 @@ func (c *Handler) GetInfo(ctx context.Context,
 		uris = append(uris, fmt.Sprintf("%x@%v", pubkey, addr))
 	}
 
-	return &GetInfoResponse{
+	return &watchtower.GetInfoResponse{
 		Pubkey:    pubkey,
 		Listeners: listeners,
 		Uris:      uris,
