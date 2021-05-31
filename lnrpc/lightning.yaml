@@ -145,3 +145,6 @@ http:
       delete: "/v1/macaroon/{root_key_id}"
     - selector: lnrpc.Lightning.ListPermissions
       get: "/v1/macaroon/permissions"
+    - selector: lnrpc.Lightning.SendCustomMessage
+      post: "/v1/custommessage"
+      body: "*"
