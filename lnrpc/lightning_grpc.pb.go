@@ -379,6 +379,10 @@ type LightningClient interface {
 	//SubscribeCustomMessages subscribes to a stream of incoming custom peer
 	//messages.
 	SubscribeCustomMessages(ctx context.Context, in *SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (Lightning_SubscribeCustomMessagesClient, error)
+	// lncli: `updatenodeannouncement`
+	//UpdateNodeAnnouncement allows the caller to update the node parameters
+	//and broadcasts a new version of the node announcement to its peers.
+	UpdateNodeAnnouncement(ctx context.Context, in *NodeAnnouncementUpdateRequest, opts ...grpc.CallOption) (*NodeAnnouncementUpdateResponse, error)
 }
 
 type lightningClient struct {
@@ -1213,6 +1217,15 @@ func (x *lightningSubscribeCustomMessagesClient) Recv() (*CustomMessage, error) 
 	return m, nil
 }
 
+func (c *lightningClient) UpdateNodeAnnouncement(ctx context.Context, in *NodeAnnouncementUpdateRequest, opts ...grpc.CallOption) (*NodeAnnouncementUpdateResponse, error) {
+	out := new(NodeAnnouncementUpdateResponse)
+	err := c.cc.Invoke(ctx, "/lnrpc.Lightning/UpdateNodeAnnouncement", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LightningServer is the server API for Lightning service.
 // All implementations must embed UnimplementedLightningServer
 // for forward compatibility
@@ -1578,6 +1591,10 @@ type LightningServer interface {
 	//SubscribeCustomMessages subscribes to a stream of incoming custom peer
 	//messages.
 	SubscribeCustomMessages(*SubscribeCustomMessagesRequest, Lightning_SubscribeCustomMessagesServer) error
+	// lncli: `updatenodeannouncement`
+	//UpdateNodeAnnouncement allows the caller to update the node parameters
+	//and broadcasts a new version of the node announcement to its peers.
+	UpdateNodeAnnouncement(context.Context, *NodeAnnouncementUpdateRequest) (*NodeAnnouncementUpdateResponse, error)
 	mustEmbedUnimplementedLightningServer()
 }
 
@@ -1767,6 +1784,9 @@ func (UnimplementedLightningServer) SendCustomMessage(context.Context, *SendCust
 }
 func (UnimplementedLightningServer) SubscribeCustomMessages(*SubscribeCustomMessagesRequest, Lightning_SubscribeCustomMessagesServer) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeCustomMessages not implemented")
+}
+func (UnimplementedLightningServer) UpdateNodeAnnouncement(context.Context, *NodeAnnouncementUpdateRequest) (*NodeAnnouncementUpdateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateNodeAnnouncement not implemented")
 }
 func (UnimplementedLightningServer) mustEmbedUnimplementedLightningServer() {}
 
@@ -2930,6 +2950,24 @@ func (x *lightningSubscribeCustomMessagesServer) Send(m *CustomMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Lightning_UpdateNodeAnnouncement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeAnnouncementUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LightningServer).UpdateNodeAnnouncement(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lnrpc.Lightning/UpdateNodeAnnouncement",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LightningServer).UpdateNodeAnnouncement(ctx, req.(*NodeAnnouncementUpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Lightning_ServiceDesc is the grpc.ServiceDesc for Lightning service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3132,6 +3170,10 @@ var Lightning_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendCustomMessage",
 			Handler:    _Lightning_SendCustomMessage_Handler,
+		},
+		{
+			MethodName: "UpdateNodeAnnouncement",
+			Handler:    _Lightning_UpdateNodeAnnouncement_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
