@@ -613,6 +613,52 @@ func (FeatureBit) EnumDescriptor() ([]byte, []int) {
 	return file_lightning_proto_rawDescGZIP(), []int{8}
 }
 
+type UpdateAction int32
+
+const (
+	UpdateAction_ADD    UpdateAction = 0
+	UpdateAction_REMOVE UpdateAction = 1
+)
+
+// Enum value maps for UpdateAction.
+var (
+	UpdateAction_name = map[int32]string{
+		0: "ADD",
+		1: "REMOVE",
+	}
+	UpdateAction_value = map[string]int32{
+		"ADD":    0,
+		"REMOVE": 1,
+	}
+)
+
+func (x UpdateAction) Enum() *UpdateAction {
+	p := new(UpdateAction)
+	*p = x
+	return p
+}
+
+func (x UpdateAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (UpdateAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_lightning_proto_enumTypes[9].Descriptor()
+}
+
+func (UpdateAction) Type() protoreflect.EnumType {
+	return &file_lightning_proto_enumTypes[9]
+}
+
+func (x UpdateAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use UpdateAction.Descriptor instead.
+func (UpdateAction) EnumDescriptor() ([]byte, []int) {
+	return file_lightning_proto_rawDescGZIP(), []int{9}
+}
+
 type ChannelCloseSummary_ClosureType int32
 
 const (
@@ -655,11 +701,11 @@ func (x ChannelCloseSummary_ClosureType) String() string {
 }
 
 func (ChannelCloseSummary_ClosureType) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[9].Descriptor()
+	return file_lightning_proto_enumTypes[10].Descriptor()
 }
 
 func (ChannelCloseSummary_ClosureType) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[9]
+	return &file_lightning_proto_enumTypes[10]
 }
 
 func (x ChannelCloseSummary_ClosureType) Number() protoreflect.EnumNumber {
@@ -715,11 +761,11 @@ func (x Peer_SyncType) String() string {
 }
 
 func (Peer_SyncType) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[10].Descriptor()
+	return file_lightning_proto_enumTypes[11].Descriptor()
 }
 
 func (Peer_SyncType) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[10]
+	return &file_lightning_proto_enumTypes[11]
 }
 
 func (x Peer_SyncType) Number() protoreflect.EnumNumber {
@@ -761,11 +807,11 @@ func (x PeerEvent_EventType) String() string {
 }
 
 func (PeerEvent_EventType) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[11].Descriptor()
+	return file_lightning_proto_enumTypes[12].Descriptor()
 }
 
 func (PeerEvent_EventType) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[11]
+	return &file_lightning_proto_enumTypes[12]
 }
 
 func (x PeerEvent_EventType) Number() protoreflect.EnumNumber {
@@ -810,11 +856,11 @@ func (x PendingChannelsResponse_ForceClosedChannel_AnchorState) String() string 
 }
 
 func (PendingChannelsResponse_ForceClosedChannel_AnchorState) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[12].Descriptor()
+	return file_lightning_proto_enumTypes[13].Descriptor()
 }
 
 func (PendingChannelsResponse_ForceClosedChannel_AnchorState) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[12]
+	return &file_lightning_proto_enumTypes[13]
 }
 
 func (x PendingChannelsResponse_ForceClosedChannel_AnchorState) Number() protoreflect.EnumNumber {
@@ -868,11 +914,11 @@ func (x ChannelEventUpdate_UpdateType) String() string {
 }
 
 func (ChannelEventUpdate_UpdateType) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[13].Descriptor()
+	return file_lightning_proto_enumTypes[14].Descriptor()
 }
 
 func (ChannelEventUpdate_UpdateType) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[13]
+	return &file_lightning_proto_enumTypes[14]
 }
 
 func (x ChannelEventUpdate_UpdateType) Number() protoreflect.EnumNumber {
@@ -920,11 +966,11 @@ func (x Invoice_InvoiceState) String() string {
 }
 
 func (Invoice_InvoiceState) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[14].Descriptor()
+	return file_lightning_proto_enumTypes[15].Descriptor()
 }
 
 func (Invoice_InvoiceState) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[14]
+	return &file_lightning_proto_enumTypes[15]
 }
 
 func (x Invoice_InvoiceState) Number() protoreflect.EnumNumber {
@@ -972,11 +1018,11 @@ func (x Payment_PaymentStatus) String() string {
 }
 
 func (Payment_PaymentStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[15].Descriptor()
+	return file_lightning_proto_enumTypes[16].Descriptor()
 }
 
 func (Payment_PaymentStatus) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[15]
+	return &file_lightning_proto_enumTypes[16]
 }
 
 func (x Payment_PaymentStatus) Number() protoreflect.EnumNumber {
@@ -1021,11 +1067,11 @@ func (x HTLCAttempt_HTLCStatus) String() string {
 }
 
 func (HTLCAttempt_HTLCStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[16].Descriptor()
+	return file_lightning_proto_enumTypes[17].Descriptor()
 }
 
 func (HTLCAttempt_HTLCStatus) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[16]
+	return &file_lightning_proto_enumTypes[17]
 }
 
 func (x HTLCAttempt_HTLCStatus) Number() protoreflect.EnumNumber {
@@ -1156,11 +1202,11 @@ func (x Failure_FailureCode) String() string {
 }
 
 func (Failure_FailureCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_lightning_proto_enumTypes[17].Descriptor()
+	return file_lightning_proto_enumTypes[18].Descriptor()
 }
 
 func (Failure_FailureCode) Type() protoreflect.EnumType {
-	return &file_lightning_proto_enumTypes[17]
+	return &file_lightning_proto_enumTypes[18]
 }
 
 func (x Failure_FailureCode) Number() protoreflect.EnumNumber {
@@ -14056,6 +14102,238 @@ func (*ListPermissionsResponse) Descriptor() ([]byte, []int) {
 func (x *ListPermissionsResponse) GetMethodPermissions() map[string]*MacaroonPermissionList {
 	if x != nil {
 		return x.MethodPermissions
+	}
+	return nil
+}
+
+type UpdateAddressAction struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Action  UpdateAction `protobuf:"varint,1,opt,name=action,proto3,enum=lnrpc.UpdateAction" json:"action,omitempty"`
+	Address *NodeAddress `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+}
+
+func (x *UpdateAddressAction) Reset() {
+	*x = UpdateAddressAction{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_lightning_proto_msgTypes[161]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateAddressAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateAddressAction) ProtoMessage() {}
+
+func (x *UpdateAddressAction) ProtoReflect() protoreflect.Message {
+	mi := &file_lightning_proto_msgTypes[161]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateAddressAction.ProtoReflect.Descriptor instead.
+func (*UpdateAddressAction) Descriptor() ([]byte, []int) {
+	return file_lightning_proto_rawDescGZIP(), []int{161}
+}
+
+func (x *UpdateAddressAction) GetAction() UpdateAction {
+	if x != nil {
+		return x.Action
+	}
+	return UpdateAction_ADD
+}
+
+func (x *UpdateAddressAction) GetAddress() *NodeAddress {
+	if x != nil {
+		return x.Address
+	}
+	return nil
+}
+
+type UpdateFeatureAction struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Action     UpdateAction `protobuf:"varint,1,opt,name=action,proto3,enum=lnrpc.UpdateAction" json:"action,omitempty"`
+	FeatureBit FeatureBit   `protobuf:"varint,2,opt,name=featureBit,proto3,enum=lnrpc.FeatureBit" json:"featureBit,omitempty"`
+}
+
+func (x *UpdateFeatureAction) Reset() {
+	*x = UpdateFeatureAction{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_lightning_proto_msgTypes[162]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateFeatureAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateFeatureAction) ProtoMessage() {}
+
+func (x *UpdateFeatureAction) ProtoReflect() protoreflect.Message {
+	mi := &file_lightning_proto_msgTypes[162]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateFeatureAction.ProtoReflect.Descriptor instead.
+func (*UpdateFeatureAction) Descriptor() ([]byte, []int) {
+	return file_lightning_proto_rawDescGZIP(), []int{162}
+}
+
+func (x *UpdateFeatureAction) GetAction() UpdateAction {
+	if x != nil {
+		return x.Action
+	}
+	return UpdateAction_ADD
+}
+
+func (x *UpdateFeatureAction) GetFeatureBit() FeatureBit {
+	if x != nil {
+		return x.FeatureBit
+	}
+	return FeatureBit_DATALOSS_PROTECT_REQ
+}
+
+type NodeAnnouncementUpdateRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// FeatureUpdates holds the set of features the node supports.
+	FeatureUpdates []*UpdateFeatureAction `protobuf:"bytes,1,rep,name=featureUpdates,proto3" json:"featureUpdates,omitempty"`
+	// Color is the node's color in hex code format.
+	Color string `protobuf:"bytes,2,opt,name=color,proto3" json:"color,omitempty"`
+	// Alias is the alias or nick name of the node.
+	Alias string `protobuf:"bytes,3,opt,name=alias,proto3" json:"alias,omitempty"`
+	// AddressUpdates is a slice of all the node's known addresses.
+	AddressUpdates []*UpdateAddressAction `protobuf:"bytes,4,rep,name=addressUpdates,proto3" json:"addressUpdates,omitempty"`
+}
+
+func (x *NodeAnnouncementUpdateRequest) Reset() {
+	*x = NodeAnnouncementUpdateRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_lightning_proto_msgTypes[163]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *NodeAnnouncementUpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NodeAnnouncementUpdateRequest) ProtoMessage() {}
+
+func (x *NodeAnnouncementUpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_lightning_proto_msgTypes[163]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NodeAnnouncementUpdateRequest.ProtoReflect.Descriptor instead.
+func (*NodeAnnouncementUpdateRequest) Descriptor() ([]byte, []int) {
+	return file_lightning_proto_rawDescGZIP(), []int{163}
+}
+
+func (x *NodeAnnouncementUpdateRequest) GetFeatureUpdates() []*UpdateFeatureAction {
+	if x != nil {
+		return x.FeatureUpdates
+	}
+	return nil
+}
+
+func (x *NodeAnnouncementUpdateRequest) GetColor() string {
+	if x != nil {
+		return x.Color
+	}
+	return ""
+}
+
+func (x *NodeAnnouncementUpdateRequest) GetAlias() string {
+	if x != nil {
+		return x.Alias
+	}
+	return ""
+}
+
+func (x *NodeAnnouncementUpdateRequest) GetAddressUpdates() []*UpdateAddressAction {
+	if x != nil {
+		return x.AddressUpdates
+	}
+	return nil
+}
+
+type NodeAnnouncementUpdateResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Ops []*Op `protobuf:"bytes,1,rep,name=ops,proto3" json:"ops,omitempty"`
+}
+
+func (x *NodeAnnouncementUpdateResponse) Reset() {
+	*x = NodeAnnouncementUpdateResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_lightning_proto_msgTypes[164]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *NodeAnnouncementUpdateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NodeAnnouncementUpdateResponse) ProtoMessage() {}
+
+func (x *NodeAnnouncementUpdateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_lightning_proto_msgTypes[164]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NodeAnnouncementUpdateResponse.ProtoReflect.Descriptor instead.
+func (*NodeAnnouncementUpdateResponse) Descriptor() ([]byte, []int) {
+	return file_lightning_proto_rawDescGZIP(), []int{164}
+}
+
+func (x *NodeAnnouncementUpdateResponse) GetOps() []*Op {
+	if x != nil {
+		return x.Ops
 	}
 	return nil
 }

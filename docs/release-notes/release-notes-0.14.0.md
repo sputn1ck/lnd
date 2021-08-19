@@ -25,6 +25,8 @@ for more information.
 * [Stub code for interacting with `lnrpc` from a WASM context through JSON 
   messages was added](https://github.com/lightningnetwork/lnd/pull/5601).
 
+* [Add `peersrpc` service with `UpdateNodeAnnouncement` endpoint](https://github.com/lightningnetwork/lnd/issues/5466).
+
 ## Wallet
 
 * It is now possible to fund a psbt [without specifying any
@@ -181,6 +183,7 @@ change](https://github.com/lightningnetwork/lnd/pull/5613).
 * ErikEk
 * Eugene Siegel
 * Joost Jager
+* Jordi Montes
 * Martin Habovstiak
 * Zero-1729
 * Oliver Gugger
