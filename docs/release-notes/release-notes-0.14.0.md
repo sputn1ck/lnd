@@ -47,6 +47,22 @@ you.
 * [Makes publishtransaction, in the wallet sub-server, reachable through 
   lncli](https://github.com/lightningnetwork/lnd/pull/5460).
 
+## Custom peer messages
+
+Lightning nodes have a connection to each of their peers for exchanging
+messages. In regular operation, these messages coordinate processes such as
+channel opening and payment forwarding.
+
+The lightning spec however also defines a custom range (>= 32768) for
+experimental and application-specific peer messages.
+
+With this release, [custom peer message
+exchange](https://github.com/lightningnetwork/lnd/pull/5346) is added to open up
+a range of new possibilities. Custom peer messages allow the lightning protocol
+with its transport mechanisms (including tor) and public key authentication to
+be leveraged for application-level communication. Note that peers exchange these
+messages directly. There is no routing/path finding involved.
+
 # Safety
 
 * Locally force closed channels are now [kept in the channel.backup file until
@@ -164,6 +180,7 @@ change](https://github.com/lightningnetwork/lnd/pull/5613).
 * Andras Banki-Horvath
 * ErikEk
 * Eugene Siegel
+* Joost Jager
 * Martin Habovstiak
 * Zero-1729
 * Oliver Gugger

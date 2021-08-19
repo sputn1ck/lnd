@@ -372,6 +372,13 @@ type LightningClient interface {
 	//ListPermissions lists all RPC method URIs and their required macaroon
 	//permissions to access them.
 	ListPermissions(ctx context.Context, in *ListPermissionsRequest, opts ...grpc.CallOption) (*ListPermissionsResponse, error)
+	// lncli: `sendcustom`
+	//SendCustomMessage sends a custom peer message.
+	SendCustomMessage(ctx context.Context, in *SendCustomMessageRequest, opts ...grpc.CallOption) (*SendCustomMessageResponse, error)
+	// lncli: `subscribecustom`
+	//SubscribeCustomMessages subscribes to a stream of incoming custom peer
+	//messages.
+	SubscribeCustomMessages(ctx context.Context, in *SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (Lightning_SubscribeCustomMessagesClient, error)
 }
 
 type lightningClient struct {
@@ -1165,6 +1172,47 @@ func (c *lightningClient) ListPermissions(ctx context.Context, in *ListPermissio
 	return out, nil
 }
 
+func (c *lightningClient) SendCustomMessage(ctx context.Context, in *SendCustomMessageRequest, opts ...grpc.CallOption) (*SendCustomMessageResponse, error) {
+	out := new(SendCustomMessageResponse)
+	err := c.cc.Invoke(ctx, "/lnrpc.Lightning/SendCustomMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *lightningClient) SubscribeCustomMessages(ctx context.Context, in *SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (Lightning_SubscribeCustomMessagesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Lightning_ServiceDesc.Streams[11], "/lnrpc.Lightning/SubscribeCustomMessages", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &lightningSubscribeCustomMessagesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Lightning_SubscribeCustomMessagesClient interface {
+	Recv() (*CustomMessage, error)
+	grpc.ClientStream
+}
+
+type lightningSubscribeCustomMessagesClient struct {
+	grpc.ClientStream
+}
+
+func (x *lightningSubscribeCustomMessagesClient) Recv() (*CustomMessage, error) {
+	m := new(CustomMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // LightningServer is the server API for Lightning service.
 // All implementations must embed UnimplementedLightningServer
 // for forward compatibility
@@ -1523,6 +1571,13 @@ type LightningServer interface {
 	//ListPermissions lists all RPC method URIs and their required macaroon
 	//permissions to access them.
 	ListPermissions(context.Context, *ListPermissionsRequest) (*ListPermissionsResponse, error)
+	// lncli: `sendcustom`
+	//SendCustomMessage sends a custom peer message.
+	SendCustomMessage(context.Context, *SendCustomMessageRequest) (*SendCustomMessageResponse, error)
+	// lncli: `subscribecustom`
+	//SubscribeCustomMessages subscribes to a stream of incoming custom peer
+	//messages.
+	SubscribeCustomMessages(*SubscribeCustomMessagesRequest, Lightning_SubscribeCustomMessagesServer) error
 	mustEmbedUnimplementedLightningServer()
 }
 
@@ -1706,6 +1761,12 @@ func (UnimplementedLightningServer) DeleteMacaroonID(context.Context, *DeleteMac
 }
 func (UnimplementedLightningServer) ListPermissions(context.Context, *ListPermissionsRequest) (*ListPermissionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPermissions not implemented")
+}
+func (UnimplementedLightningServer) SendCustomMessage(context.Context, *SendCustomMessageRequest) (*SendCustomMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendCustomMessage not implemented")
+}
+func (UnimplementedLightningServer) SubscribeCustomMessages(*SubscribeCustomMessagesRequest, Lightning_SubscribeCustomMessagesServer) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeCustomMessages not implemented")
 }
 func (UnimplementedLightningServer) mustEmbedUnimplementedLightningServer() {}
 
@@ -2830,6 +2891,45 @@ func _Lightning_ListPermissions_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Lightning_SendCustomMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendCustomMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LightningServer).SendCustomMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/lnrpc.Lightning/SendCustomMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LightningServer).SendCustomMessage(ctx, req.(*SendCustomMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Lightning_SubscribeCustomMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeCustomMessagesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(LightningServer).SubscribeCustomMessages(m, &lightningSubscribeCustomMessagesServer{stream})
+}
+
+type Lightning_SubscribeCustomMessagesServer interface {
+	Send(*CustomMessage) error
+	grpc.ServerStream
+}
+
+type lightningSubscribeCustomMessagesServer struct {
+	grpc.ServerStream
+}
+
+func (x *lightningSubscribeCustomMessagesServer) Send(m *CustomMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // Lightning_ServiceDesc is the grpc.ServiceDesc for Lightning service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3029,6 +3129,10 @@ var Lightning_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ListPermissions",
 			Handler:    _Lightning_ListPermissions_Handler,
 		},
+		{
+			MethodName: "SendCustomMessage",
+			Handler:    _Lightning_SendCustomMessage_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -3087,6 +3191,11 @@ var Lightning_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SubscribeChannelBackups",
 			Handler:       _Lightning_SubscribeChannelBackups_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SubscribeCustomMessages",
+			Handler:       _Lightning_SubscribeCustomMessages_Handler,
 			ServerStreams: true,
 		},
 	},
