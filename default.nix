@@ -8,7 +8,7 @@ pkgs.buildGoModule rec {
 
   src = ./.;
 
-  vendorSha256 = "089drfb5kp9gyjg8xsa1wcv0pba964mrjmd7jb79ydfq12zay7fd";
+  vendorSha256 = "sha256-RcibmGhRN4DKB6I6qaIRVT21o2c+Rdq+YJWMv8A2/pk=";
 
   subPackages = ["cmd/lncli" "cmd/lnd"];
   preBuild = let
