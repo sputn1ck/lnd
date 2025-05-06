@@ -357,6 +357,14 @@ service WalletKit {
     unlock/release any locked UTXOs in case of an error in this method.
     */
     rpc FinalizePsbt (FinalizePsbtRequest) returns (FinalizePsbtResponse);
+
+    /*
+    SubmitPackage attempts to broadcast a transaction package, consisting of
+    one or more parent transactions and exactly one child transaction.
+    The package is submitted to the backend node's mempool atomically.
+    This RPC is primarily used for Child-Pays-For-Parent (CPFP) fee bumping.
+    */
+    rpc SubmitPackage (SubmitPackageRequest) returns (SubmitPackageResponse);
 }
 
 message ListUnspentRequest {
@@ -1585,4 +1593,28 @@ message ListLeasesRequest {
 message ListLeasesResponse {
     // The list of currently leased utxos.
     repeated UtxoLease locked_utxos = 1;
+}
+
+message SubmitPackageRequest {
+    // A list of raw, serialized parent transactions. These transactions are
+    // typically the ones being fee-bumped.
+    repeated bytes parent_txs = 1;
+
+    // The raw, serialized child transaction. This transaction spends outputs
+    // from one or more of the parent_txs and should provide sufficient fees for
+    // the entire package.
+    bytes child_tx = 2;
+
+    // An optional fee rate cap for the package, expressed in satoshis per
+    // kilo-weight (sat/kw). If non-zero, the backend node may reject the
+    // package if its effective fee rate exceeds this value. A value of 0
+    // indicates no specific limit should be enforced by the caller.
+    uint32 max_fee_rate_sat_per_kw = 3;
+}
+
+message SubmitPackageResponse {
+    // A list of hex-encoded transaction IDs of all transactions from the
+    // submitted package (parents and child) that were successfully accepted
+    // into the backend node's mempool or were already present.
+    repeated string package_txids = 1;
 }

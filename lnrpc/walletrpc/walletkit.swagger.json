@@ -2175,6 +2175,18 @@
         }
       }
     },
+    "walletrpcSubmitPackageResponse": {
+      "type": "object",
+      "properties": {
+        "package_txids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of hex-encoded transaction IDs of all transactions from the\nsubmitted package (parents and child) that were successfully accepted\ninto the backend node's mempool or were already present."
+        }
+      }
+    },
     "walletrpcTapLeaf": {
       "type": "object",
       "properties": {
