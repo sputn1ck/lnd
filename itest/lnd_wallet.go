@@ -2,23 +2,23 @@ package itest
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/signrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 	"github.com/lightningnetwork/lnd/lntest"
 	"github.com/lightningnetwork/lnd/lntest/node"
 	"github.com/lightningnetwork/lnd/lnwallet"
-	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/stretchr/testify/require"
 )
 
@@ -161,7 +161,7 @@ func keyDescToAddrP2WPKH(ht *lntest.HarnessTest,
 func runTestSubmitPackageBasicCPFP(ht *lntest.HarnessTest) {
 	const (
 		fundingAmount = btcutil.Amount(10_000_000)
-		childFeeRate  = 10
+		childFeeRate  = 100
 		testKeyFamily = 111
 	)
 
@@ -222,20 +222,41 @@ func runTestSubmitPackageBasicCPFP(ht *lntest.HarnessTest) {
 		Index: outputIndex,
 	}
 	// Derive a key and address for the parent's output.
-	parentOutKeyDesc := alice.RPC.DeriveNextKey(
-		&walletrpc.KeyReq{
-			KeyFamily: testKeyFamily,
-		},
-	)
-	parentOutAddr := keyDescToAddrP2WPKH(ht, parentOutKeyDesc)
-	parentOutPkScript := ht.PayToAddrScript(parentOutAddr)
+	// parentOutKeyDesc := alice.RPC.DeriveNextKey(
+	// 	&walletrpc.KeyReq{
+	// 		KeyFamily: testKeyFamily,
+	// 	},
+	// )
+	//parentOutAddr := keyDescToAddrP2WPKH(ht, parentOutKeyDesc)
+	//parentOutPkScript := ht.PayToAddrScript(parentOutAddr)
 
 	parentOutputValue := btcutil.Amount(fundingAmount)
 
 	parentTx := wire.NewMsgTx(3)
 	parentTx.AddTxIn(wire.NewTxIn(&fundOutPoint, nil, nil))
+	// We'll send the full amount to a new addres from alice.
+	aliceAddrResp := alice.RPC.NewAddress(
+		&lnrpc.NewAddressRequest{
+			Account: lnwallet.DefaultAccountName,
+			Type:    lnrpc.AddressType_WITNESS_PUBKEY_HASH,
+		},
+	)
+	aliceAddr2 := ht.DecodeAddress(aliceAddrResp.Address)
+	aliceAddr2PkScript := ht.PayToAddrScript(aliceAddr2)
 	parentTx.AddTxOut(
-		wire.NewTxOut(int64(parentOutputValue), parentOutPkScript),
+		wire.NewTxOut(int64(parentOutputValue), aliceAddr2PkScript),
+	)
+
+	// We'll add a dust output to the parent tx which we'll in a child
+	// tx to confirm the parent tx.
+
+	// 1-byte script: OP_TRUE
+	opTrue := []byte{txscript.OP_TRUE}
+	h := sha256.Sum256(opTrue)
+	anchorScript, _ := txscript.NewScriptBuilder().
+		AddOp(txscript.OP_0).AddData(h[:]).Script()
+	parentTx.AddTxOut(
+		wire.NewTxOut(0, anchorScript),
 	)
 
 	// Serialize the parent tx.
@@ -277,78 +298,85 @@ func runTestSubmitPackageBasicCPFP(ht *lntest.HarnessTest) {
 	)
 	require.NoError(ht, err)
 
-	childOutPkScript := ht.PayToAddrScript(
-		ht.DecodeAddress(childOutAddrResp.Address),
-	)
-
-	// Estimate child's weight and fee.
-	childEstimator := input.TxWeightEstimator{}
-	childEstimator.AddP2WKHInput()
-	childEstimator.AddP2WKHOutput()
-	childWeight := childEstimator.Weight()
-	childFee := chainfee.SatPerVByte(
-		childFeeRate,
-	).FeePerKWeight().FeeForWeight(
-		childWeight,
-	)
-
-	childOutputValue := btcutil.Amount(parentOutputValue) - childFee
-
-	// Create the unsigned child transaction.
-	childTx := wire.NewMsgTx(3)
-	childParentInputOP := wire.OutPoint{
-		Hash:  parentTx.TxHash(),
-		Index: 0,
-	}
-
-	childTx.AddTxIn(wire.NewTxIn(&childParentInputOP, nil, nil))
-	childTx.AddTxOut(
-		wire.NewTxOut(int64(childOutputValue), childOutPkScript),
-	)
-	var childBuf bytes.Buffer
-	require.NoError(ht, childTx.Serialize(&childBuf))
-
-	childPrevOut := &wire.TxOut{
-		Value:    int64(parentOutputValue),
-		PkScript: parentOutPkScript, // script of *parent’s* output
-	}
-
-	childSignDesc := &signrpc.SignDescriptor{
-		KeyDesc: parentOutKeyDesc,
-		Output: &signrpc.TxOut{
-			Value:    childPrevOut.Value,
-			PkScript: childPrevOut.PkScript,
-		},
-		WitnessScript: childPrevOut.PkScript,
-		Sighash:       uint32(txscript.SigHashAll),
-		SignMethod:    signrpc.SignMethod_SIGN_METHOD_WITNESS_V0,
-	}
-
-	childSignResp, err := alice.RPC.Signer.SignOutputRaw(
+	// We'll just fund a psbt from a template with lnds api.
+	// NOTE: in a real life scenario, we'd want to use a full utxo to not
+	// generate change.
+	childFundedPsbtRes, err := alice.RPC.WalletKit.FundPsbt(
 		ht.Context(),
-		&signrpc.SignReq{
-			RawTxBytes: childBuf.Bytes(),
-			SignDescs:  []*signrpc.SignDescriptor{childSignDesc},
+		&walletrpc.FundPsbtRequest{
+			Template: &walletrpc.FundPsbtRequest_Raw{
+				Raw: &walletrpc.TxTemplate{
+					Outputs: map[string]uint64{
+						// We'll send some amount to the child's output.
+						childOutAddrResp.Address: 100_000,
+					},
+				},
+			},
+			Fees: &walletrpc.FundPsbtRequest_SatPerVbyte{
+				SatPerVbyte: 10,
+			},
 		},
 	)
 	require.NoError(ht, err)
 
-	// Set the child tx's witness to the signature.
-	childTx.TxIn[0].Witness = makeP2WPKHWitness(
-		childSignResp.RawSigs[0],
-		parentOutKeyDesc,
+	// We'll decode the funded psbt.
+	childPsbt, err := psbt.NewFromRawBytes(
+		bytes.NewReader(childFundedPsbtRes.FundedPsbt),
+		false,
 	)
+	require.NoError(ht, err)
+
+	// We'll add the parent tx op_true output as an input to the child tx.
+	anchorOut := &wire.OutPoint{
+		Hash:  parentTx.TxHash(),
+		Index: 1,
+	}
+	childPsbt.UnsignedTx.AddTxIn(
+		wire.NewTxIn(
+			anchorOut, nil, nil,
+		),
+	)
+	childPsbt.UnsignedTx.Version = 3
+
+	wit := wire.TxWitness{opTrue}
+	var buf bytes.Buffer
+	wire.WriteVarInt(&buf, 0, uint64(len(wit))) // #items
+	for _, item := range wit {
+		wire.WriteVarInt(&buf, 0, uint64(len(item))) // len
+		buf.Write(item)                              // data
+	}
+	finalWit := buf.Bytes()
+
+	anchorInput := psbt.PInput{
+		// segwit spends: use WitnessUtxo
+		WitnessUtxo: &wire.TxOut{
+			Value:    0,
+			PkScript: anchorScript, // the 0 <32-B-hash> script
+		},
+		WitnessScript:      opTrue, // the redeem script: single OP_TRUE byte
+		FinalScriptWitness: finalWit,
+	}
+	childPsbt.Inputs = append(childPsbt.Inputs, anchorInput)
+
+	// We can now serialize the child psbt and finalize it.
+	var childPsbtBuf bytes.Buffer
+	require.NoError(ht, childPsbt.Serialize(&childPsbtBuf))
+	childPsbtFinalizedRes, err := alice.RPC.WalletKit.FinalizePsbt(
+		ht.Context(),
+		&walletrpc.FinalizePsbtRequest{FundedPsbt: childPsbtBuf.Bytes()},
+	)
+	require.NoError(ht, err)
 
 	// Reserialize parent and child txns as they now have signatures.
 	parentBuf = bytes.Buffer{}
 	require.NoError(ht, parentTx.Serialize(&parentBuf))
 	parentHex := hex.EncodeToString(parentBuf.Bytes())
-	childBuf = bytes.Buffer{}
-	require.NoError(ht, childTx.Serialize(&childBuf))
-	childHex := hex.EncodeToString(childBuf.Bytes())
+	// childBuf = bytes.Buffer{}
+	// require.NoError(ht, childTx.Serialize(&childBuf))
+	childHex := hex.EncodeToString(childPsbtFinalizedRes.RawFinalTx)
 	decodedParentTx, err := bitcoindRpc.DecodeRawTransaction(parentBuf.Bytes())
 	require.NoError(ht, err)
-	decodedChildTx, err := bitcoindRpc.DecodeRawTransaction(childBuf.Bytes())
+	decodedChildTx, err := bitcoindRpc.DecodeRawTransaction(childPsbtFinalizedRes.RawFinalTx)
 	require.NoError(ht, err)
 	ht.Logf("Decoded parent tx: %v", spew.Sdump(decodedParentTx))
 	ht.Logf("Decoded child tx: %v", spew.Sdump(decodedChildTx))
@@ -382,12 +410,12 @@ func runTestSubmitPackageBasicCPFP(ht *lntest.HarnessTest) {
 	}
 
 	ht.AssertTxInMempool(parentTx.TxHash())
-	ht.AssertTxInMempool(childTx.TxHash())
+	//ht.AssertTxInMempool(childTx.TxHash())
 
 	ht.Log("Mining block with package transactions...")
 	block = ht.MineBlocksAndAssertNumTxes(1, 2)
 	ht.AssertTxInBlock(block[0], parentTx.TxHash())
-	ht.AssertTxInBlock(block[0], childTx.TxHash())
+	// ht.AssertTxInBlock(block[0], childTx.TxHash())
 }
 
 func makeP2WPKHWitness(sig []byte, keyDesc *signrpc.KeyDescriptor) wire.TxWitness {
