@@ -316,6 +316,13 @@ func (w *mockWalletController) CheckMempoolAcceptance(tx *wire.MsgTx) error {
 	return nil
 }
 
+func (w *mockWalletController) SubmitPackage(parents []*wire.MsgTx,
+	child *wire.MsgTx, maxFeeRate chainfee.SatPerKWeight) (
+	[]*chainhash.Hash, error) {
+
+	return nil, nil
+}
+
 // mockChainNotifier is a mock implementation of the ChainNotifier interface.
 type mockChainNotifier struct {
 	SpendChan chan *chainntnfs.SpendDetail

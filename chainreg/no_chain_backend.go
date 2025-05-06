@@ -224,4 +224,10 @@ func (n *NoChainSource) MapRPCErr(err error) error {
 	return err
 }
 
+func (n *NoChainSource) SubmitPackage([]*wire.MsgTx, *wire.MsgTx,
+	*float64) ([]*chainhash.Hash, error) {
+
+	return nil, errNotImplemented
+}
+
 var _ chain.Interface = (*NoChainSource)(nil)

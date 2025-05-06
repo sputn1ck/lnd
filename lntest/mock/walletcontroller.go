@@ -293,6 +293,12 @@ func (w *WalletController) CheckMempoolAcceptance(tx *wire.MsgTx) error {
 	return nil
 }
 
+func (w *WalletController) SubmitPackage([]*wire.MsgTx, *wire.MsgTx,
+	chainfee.SatPerKWeight) ([]*chainhash.Hash, error) {
+
+	return nil, nil
+}
+
 // FetchDerivationInfo queries for the wallet's knowledge of the passed
 // pkScript and constructs the derivation info and returns it.
 func (w *WalletController) FetchDerivationInfo(

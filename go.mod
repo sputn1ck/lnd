@@ -210,6 +210,10 @@ replace github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
 // allows us to specify that as an option.
 replace google.golang.org/protobuf => github.com/lightninglabs/protobuf-go-hex-display v1.30.0-hex-display
 
+replace github.com/btcsuite/btcwallet => github.com/bhandras/btcwallet v0.11.1-0.20250505194104-fc3c2b4a107d
+
+replace github.com/btcsuite/btcd => github.com/bhandras/btcd v0.22.0-beta.0.20250505192317-88de59959669
+
 // If you change this please also update docs/INSTALL.md and GO_VERSION in
 // Makefile (then run `make lint` to see where else it needs to be updated as
 // well).
