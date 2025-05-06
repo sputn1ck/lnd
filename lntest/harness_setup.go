@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/integration/rpctest"
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/lightningnetwork/lnd/lntest/miner"
 	"github.com/lightningnetwork/lnd/lntest/node"
 	"github.com/lightningnetwork/lnd/lntest/wait"
@@ -126,4 +127,14 @@ func prepareDBBackend(t *testing.T,
 	}
 
 	return dbBackend
+}
+
+func (ht *HarnessTest) GetChainBackendRpcClient() *rpcclient.Client {
+
+	// irst get backend config.
+	chainBackendCfg := ht.manager.chainBackend
+	// Cast to lntest.BitcoindBackendConfig.
+	btcdBackendCfg := chainBackendCfg.(*BitcoindBackendConfig)
+
+	return btcdBackendCfg.rpcClient
 }

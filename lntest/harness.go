@@ -2282,6 +2282,24 @@ func (h *HarnessTest) SendCoins(a, b *node.HarnessNode,
 	return tx
 }
 
+// SendCoinsToAddr sends the given amount from the passed node to the given
+// address amount, returns the sending tx.
+func (h *HarnessTest) SendCoinsToAddr(node *node.HarnessNode,
+	addr btcutil.Address, amt btcutil.Amount) *wire.MsgTx {
+
+	// Send the coins to the given address. We should expect a tx to be
+	// broadcast and seen in the mempool.
+	sendReq := &lnrpc.SendCoinsRequest{
+		Addr:       addr.String(),
+		Amount:     int64(amt),
+		TargetConf: 6,
+	}
+	node.RPC.SendCoins(sendReq)
+	tx := h.GetNumTxsFromMempool(1)[0]
+
+	return tx
+}
+
 // SendCoins sends all coins from node A to node B, returns the sending tx.
 func (h *HarnessTest) SendAllCoins(a, b *node.HarnessNode) *wire.MsgTx {
 	// Create an address for Bob receive the coins.
