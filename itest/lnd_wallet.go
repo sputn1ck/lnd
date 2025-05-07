@@ -332,6 +332,13 @@ func runTestSubmitPackageBasicCPFP(ht *lntest.HarnessTest) {
 		childSignResp.RawSigs[0], parentOutKey,
 	)
 
+	// Reserialize both txs as they are now signed.
+	parentBuf.Reset()
+	require.NoError(ht, parentTx.Serialize(&parentBuf))
+
+	childBuf.Reset()
+	require.NoError(ht, childTx.Serialize(&childBuf))
+
 	submitPackageResp, err := alice.RPC.WalletKit.SubmitPackage(
 		ht.Context(), &walletrpc.SubmitPackageRequest{
 			ParentTxs: [][]byte{parentBuf.Bytes()},
