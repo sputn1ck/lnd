@@ -65,6 +65,11 @@ require (
 )
 
 require (
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
+	github.com/cloudflare/circl v1.6.0 // indirect
+)
+
+require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
