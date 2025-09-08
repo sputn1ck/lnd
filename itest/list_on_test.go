@@ -99,6 +99,10 @@ var allTestCases = []*lntest.TestCase{
 		TestFunc: testOnchainFundRecovery,
 	},
 	{
+		Name:     "debug package submission",
+		TestFunc: testDebugPackageSubmission,
+	},
+	{
 		Name:     "wallet rescan address detection",
 		TestFunc: testRescanAddressDetection,
 	},

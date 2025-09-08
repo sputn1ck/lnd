@@ -566,6 +566,11 @@ var submitDebugPackageCommand = cli.Command{
 			Usage: "Write to a local file instead of uploading " +
 				"(used automatically if no paste service is available)",
 		},
+		cli.StringFlag{
+			Name: "gpg-key",
+			Usage: "Path to a specific GPG public key file to use for encryption " +
+				"(for testing; normally uses all keys in scripts/keys)",
+		},
 		cli.BoolFlag{
 			Name: "peers",
 			Usage: "include information about connected peers " +
@@ -636,11 +641,21 @@ func submitDebugPackage(ctx *cli.Context) error {
 		return fmt.Errorf("unable to encrypt payload: %w", err)
 	}
 
-	// Load all GPG public keys from scripts/keys
-	fmt.Println("Loading Lightning Labs GPG keys...")
-	encryptedKeys, err := encryptKeyWithGPG(aesKey)
-	if err != nil {
-		return fmt.Errorf("unable to encrypt AES key with GPG: %w", err)
+	// Load GPG public keys
+	fmt.Println("Loading GPG keys...")
+	var encryptedKeys map[string]string
+	if gpgKeyPath := ctx.String("gpg-key"); gpgKeyPath != "" {
+		// Use specific GPG key for testing
+		encryptedKeys, err = encryptKeyWithSpecificGPG(aesKey, gpgKeyPath)
+		if err != nil {
+			return fmt.Errorf("unable to encrypt AES key with specific GPG key: %w", err)
+		}
+	} else {
+		// Use all Lightning Labs GPG keys
+		encryptedKeys, err = encryptKeyWithGPG(aesKey)
+		if err != nil {
+			return fmt.Errorf("unable to encrypt AES key with GPG: %w", err)
+		}
 	}
 
 	// Get version info
@@ -713,6 +728,59 @@ func encryptWithAES(data []byte, key []byte) ([]byte, []byte, error) {
 
 	ciphertext := gcm.Seal(nil, nonce, data, nil)
 	return ciphertext, nonce, nil
+}
+
+// encryptKeyWithSpecificGPG encrypts the AES key with a specific GPG public key
+func encryptKeyWithSpecificGPG(aesKey []byte, keyPath string) (map[string]string, error) {
+	encryptedKeys := make(map[string]string)
+	
+	keyFile, err := os.Open(keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("unable to open GPG key file: %w", err)
+	}
+	defer keyFile.Close()
+
+	// Read the armored public key
+	block, err := armor.Decode(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode armored key: %w", err)
+	}
+
+	// Parse the public key
+	reader := packet.NewReader(block.Body)
+	entity, err := openpgp.ReadEntity(reader)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse public key: %w", err)
+	}
+
+	// Encrypt the AES key with this public key
+	var encBuf bytes.Buffer
+	armorWriter, err := armor.Encode(&encBuf, "PGP MESSAGE", nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create armor writer: %w", err)
+	}
+
+	plainWriter, err := openpgp.Encrypt(armorWriter, 
+		[]*openpgp.Entity{entity}, nil, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to encrypt: %w", err)
+	}
+
+	if _, err := plainWriter.Write(aesKey); err != nil {
+		return nil, fmt.Errorf("unable to write encrypted key: %w", err)
+	}
+	
+	plainWriter.Close()
+	armorWriter.Close()
+
+	// Store with filename as key
+	keyName := filepath.Base(keyPath)
+	keyName = strings.TrimSuffix(keyName, filepath.Ext(keyName))
+	encryptedKeys[keyName] = encBuf.String()
+	
+	fmt.Printf("  Encrypted for: %s\n", keyName)
+	
+	return encryptedKeys, nil
 }
 
 // encryptKeyWithGPG encrypts the AES key with all Lightning Labs GPG public keys
