@@ -12936,6 +12936,10 @@ type Invoice struct {
 	// can be used to override the defaults config values provided in by the
 	// global config. This field is only used if is_blinded is true.
 	BlindedPathConfig *BlindedPathConfig `protobuf:"bytes,30,opt,name=blinded_path_config,json=blindedPathConfig,proto3" json:"blinded_path_config,omitempty"`
+	// Metadata is additional data that is sent along with the payment to the
+	// payee. This field can be used to embed arbitrary data within an invoice.
+	// When using REST, this field must be encoded as base64.
+	Metadata []byte `protobuf:"bytes,31,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
 func (x *Invoice) Reset() {
@@ -13171,6 +13175,13 @@ func (x *Invoice) GetIsBlinded() bool {
 func (x *Invoice) GetBlindedPathConfig() *BlindedPathConfig {
 	if x != nil {
 		return x.BlindedPathConfig
+	}
+	return nil
+}
+
+func (x *Invoice) GetMetadata() []byte {
+	if x != nil {
+		return x.Metadata
 	}
 	return nil
 }
@@ -14971,6 +14982,9 @@ type PayReq struct {
 	NumMsat         int64                 `protobuf:"varint,12,opt,name=num_msat,json=numMsat,proto3" json:"num_msat,omitempty"`
 	Features        map[uint32]*Feature   `protobuf:"bytes,13,rep,name=features,proto3" json:"features,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	BlindedPaths    []*BlindedPaymentPath `protobuf:"bytes,14,rep,name=blinded_paths,json=blindedPaths,proto3" json:"blinded_paths,omitempty"`
+	// Metadata is additional data that is sent along with the payment to the
+	// payee.
+	Metadata        []byte                `protobuf:"bytes,15,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
 func (x *PayReq) Reset() {
@@ -15099,6 +15113,13 @@ func (x *PayReq) GetFeatures() map[uint32]*Feature {
 func (x *PayReq) GetBlindedPaths() []*BlindedPaymentPath {
 	if x != nil {
 		return x.BlindedPaths
+	}
+	return nil
+}
+
+func (x *PayReq) GetMetadata() []byte {
+	if x != nil {
+		return x.Metadata
 	}
 	return nil
 }

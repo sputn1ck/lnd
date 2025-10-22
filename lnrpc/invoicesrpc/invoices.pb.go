@@ -199,6 +199,9 @@ type AddHoldInvoiceRequest struct {
 	RouteHints []*lnrpc.RouteHint `protobuf:"bytes,8,rep,name=route_hints,json=routeHints,proto3" json:"route_hints,omitempty"`
 	// Whether this invoice should include routing hints for private channels.
 	Private bool `protobuf:"varint,9,opt,name=private,proto3" json:"private,omitempty"`
+	// Metadata is additional data that is sent along with the payment to the
+	// payee. This field can be used to embed arbitrary data within an invoice.
+	Metadata []byte `protobuf:"bytes,11,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
 func (x *AddHoldInvoiceRequest) Reset() {
@@ -301,6 +304,13 @@ func (x *AddHoldInvoiceRequest) GetPrivate() bool {
 		return x.Private
 	}
 	return false
+}
+
+func (x *AddHoldInvoiceRequest) GetMetadata() []byte {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
 }
 
 type AddHoldInvoiceResp struct {
