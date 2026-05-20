@@ -90,11 +90,14 @@ browser SDK path. That avoids direct filesystem writes, but it is not a durable
 static channel backup strategy. A production browser wallet should persist and
 export encrypted SCBs through OPFS or an explicit application backup flow.
 
-Browser storage depends on OPFS and cross-origin isolation. The demo server sets
-COOP/COEP headers and the GitHub Pages flow uses a service-worker based setup so
-SQLite can use persistent OPFS storage. Sites embedding the SDK need to serve the
-same isolation headers and should handle browsers where OPFS is unavailable or
-cleared by the user.
+Browser storage depends on OPFS and cross-origin isolation. The demo defaults to
+SQLite's `opfs-sahpool` VFS and requires persistent storage for non-memory
+modes. It also exposes an explicit `memory` mode for debugging; when selected,
+the page shows a warning because wallet, channel, and payment state are
+ephemeral. The demo server sets COOP/COEP headers and the GitHub Pages flow uses
+a service-worker based setup so SQLite can use persistent OPFS storage. Sites
+embedding the SDK need to serve the same isolation headers and should handle
+browsers where OPFS is unavailable or cleared by the user.
 
 The WASM binary is large and startup is heavier than a normal web wallet. This
 is expected because the browser is running lnd itself. The compressed artifact is

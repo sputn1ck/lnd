@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"syscall/js"
 	"testing"
 
 	"github.com/lightningnetwork/lnd/sqldb/sqlc"
@@ -15,6 +16,8 @@ import (
 	_ "github.com/sputn1ck/go-wasmsqlite"
 	"github.com/stretchr/testify/require"
 )
+
+const defaultWasmSQLiteVFS = "opfs-sahpool"
 
 var (
 	// sqliteSchemaReplacements maps schema strings to their SQLite
@@ -47,11 +50,8 @@ func NewSqliteStore(cfg *SqliteConfig, dbPath string) (*SqliteStore, error) {
 	pragmaOptions = append(pragmaOptions, cfg.PragmaOptions...)
 
 	wasmOptions := make(url.Values)
-	wasmOptions.Set("file", dbPath)
-	wasmOptions.Set("vfs", "opfs")
-	wasmOptions.Set("journal_mode", "WAL")
+	setWasmSQLiteStorage(wasmOptions, dbPath)
 	wasmOptions.Set("busy_timeout", fmt.Sprintf("%d", cfg.busyTimeoutMs()))
-	wasmOptions.Set("require_persistent", "true")
 	wasmOptions.Set("pragma", strings.Join(pragmaOptions, ";"))
 
 	db, err := sql.Open("wasmsqlite", wasmOptions.Encode())
@@ -171,6 +171,25 @@ func NewTestSqliteDB(t testing.TB) *SqliteStore {
 	})
 
 	return sqlDB
+}
+
+func setWasmSQLiteStorage(values url.Values, fileName string) {
+	vfs := defaultWasmSQLiteVFS
+	globalVFS := js.Global().Get("lndWasmSQLiteVFS")
+	if globalVFS.Type() == js.TypeString && globalVFS.String() != "" {
+		vfs = globalVFS.String()
+	}
+
+	if vfs == "memory" {
+		values.Set("file", ":memory:")
+		values.Set("vfs", "memory")
+		return
+	}
+
+	values.Set("file", fileName)
+	values.Set("vfs", vfs)
+	values.Set("journal_mode", "WAL")
+	values.Set("require_persistent", "true")
 }
 
 // NewTestSqliteDBWithVersion is a helper function that creates an SQLite

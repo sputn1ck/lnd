@@ -8,11 +8,14 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"syscall/js"
 
 	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/kvdb/sqlbase"
 	_ "github.com/sputn1ck/go-wasmsqlite"
 )
+
+const defaultWasmSQLiteVFS = "opfs-sahpool"
 
 // NewSqliteBackend returns a db object initialized with the passed backend
 // config. The browser build uses go-wasmsqlite, which provides OPFS-backed
@@ -28,10 +31,7 @@ func NewSqliteBackend(ctx context.Context, cfg *Config, dbPath, fileName,
 	pragmaOptions = append(pragmaOptions, cfg.PragmaOptions...)
 
 	wasmOptions := make(url.Values)
-	wasmOptions.Set("file", filepath.Join(dbPath, fileName))
-	wasmOptions.Set("vfs", "opfs")
-	wasmOptions.Set("journal_mode", "WAL")
-	wasmOptions.Set("require_persistent", "true")
+	setWasmSQLiteStorage(wasmOptions, filepath.Join(dbPath, fileName))
 	wasmOptions.Set("pragma", strings.Join(pragmaOptions, ";"))
 
 	sqlCfg := &sqlbase.Config{
@@ -42,4 +42,23 @@ func NewSqliteBackend(ctx context.Context, cfg *Config, dbPath, fileName,
 	}
 
 	return sqlbase.NewSqlBackend(ctx, sqlCfg)
+}
+
+func setWasmSQLiteStorage(values url.Values, fileName string) {
+	vfs := defaultWasmSQLiteVFS
+	globalVFS := js.Global().Get("lndWasmSQLiteVFS")
+	if globalVFS.Type() == js.TypeString && globalVFS.String() != "" {
+		vfs = globalVFS.String()
+	}
+
+	if vfs == "memory" {
+		values.Set("file", ":memory:")
+		values.Set("vfs", "memory")
+		return
+	}
+
+	values.Set("file", fileName)
+	values.Set("vfs", vfs)
+	values.Set("journal_mode", "WAL")
+	values.Set("require_persistent", "true")
 }
