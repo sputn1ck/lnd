@@ -1,6 +1,7 @@
 package chainreg
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 	"github.com/lightningnetwork/lnd/chainntnfs/bitcoindnotify"
 	"github.com/lightningnetwork/lnd/chainntnfs/btcdnotify"
 	"github.com/lightningnetwork/lnd/chainntnfs/neutrinonotify"
+	chainreg_esplora "github.com/lightningnetwork/lnd/chainreg/esplora"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/fn/v2"
 	"github.com/lightningnetwork/lnd/graph/db/models"
@@ -269,6 +271,28 @@ func NewPartialChainControl(cfg *Config) (*PartialChainControl, func(), error) {
 	// chainControl interfaces that interface directly with the p2p network
 	// of the selected chain.
 	switch cfg.Bitcoin.Node {
+	case "esplora":
+		if cfg.Bitcoin.EsploraURL == "" {
+			return nil, nil, fmt.Errorf("bitcoin.esploraurl must be " +
+				"set when bitcoin.node=esplora")
+		}
+
+		esploraClient := chainreg_esplora.NewClient(
+			cfg.Bitcoin.EsploraURL,
+		)
+		esploraCore := chainreg_esplora.NewCore(
+			esploraClient, cfg.Bitcoin.EsploraPollInterval, log,
+		)
+
+		cc.ChainNotifier = chainreg_esplora.NewNotifier(esploraCore)
+		cc.ChainView = chainreg_esplora.NewView(esploraCore)
+		cc.ChainSource = chainreg_esplora.NewSource(esploraCore)
+		cc.FeeEstimator = chainreg_esplora.NewEstimator(esploraClient)
+		cc.HealthCheck = func() error {
+			_, err := esploraClient.TipHeight(context.Background())
+			return err
+		}
+
 	case "neutrino":
 		// We'll create ChainNotifier and FilteredChainView instances,
 		// along with the wallet's ChainSource, which are all backed by
