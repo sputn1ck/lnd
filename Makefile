@@ -28,6 +28,8 @@ ANDROID_MAX_PAGE_SIZE := 16384
 ANDROID_EXTLDFLAGS := -extldflags '-Wl,-z,max-page-size=$(ANDROID_MAX_PAGE_SIZE)'
 
 COMMIT := $(shell git describe --tags --dirty)
+WASM_STATIC_DIR := web/lndwasm/static
+WASM_TAGS := kvdb_sqlite
 
 # Determine the minor version of the active Go installation.
 ACTIVE_GO_VERSION := $(shell $(GOCC) version | sed -nre 's/^[^0-9]*(([0-9]+\.)*[0-9]+).*/\1/p')
@@ -461,6 +463,29 @@ rpc-js-compile:
 	@$(call print, "Compiling JSON/WASM stubs.")
 	GOOS=js GOARCH=wasm $(GOBUILD) -tags="$(WASM_RELEASE_TAGS)" $(PKG)/lnrpc/...
 
+#? wasm-assets: Regenerate browser demo static assets, excluding the lnd WASM binary
+wasm-assets:
+	@$(call print, "Generating lnd WASM browser assets.")
+	mkdir -p $(WASM_STATIC_DIR)
+	$(GOCC) run ./cmd/lndwasmassets $(WASM_STATIC_DIR)
+	$(CP) web/lndwasm/index.html $(WASM_STATIC_DIR)/index.html
+
+#? wasm-build: Build the lnd browser WASM binary and gzip copy
+wasm-build: wasm-assets
+	@$(call print, "Building lnd browser WASM binary.")
+	GOOS=js GOARCH=wasm $(GOBUILD) -tags="$(WASM_TAGS)" -o $(WASM_STATIC_DIR)/lndwasm.wasm ./cmd/lndwasm
+	gzip -kf $(WASM_STATIC_DIR)/lndwasm.wasm
+
+#? wasm-test: Build and run the lnd browser WASM Playwright tests
+wasm-test: wasm-build
+	@$(call print, "Testing lnd browser WASM demo.")
+	npx playwright test --config web/lndwasm/playwright.config.mjs
+
+#? wasm-clean: Remove regenerated browser demo static assets
+wasm-clean:
+	@$(call print, "Cleaning lnd WASM browser assets.")
+	$(RM) -r $(WASM_STATIC_DIR)
+
 #? sample-conf-check: Make sure default values in the sample-lnd.conf file are set correctly
 sample-conf-check:
 	@$(call print, "Checking that default values in the sample-lnd.conf file are set correctly")
@@ -545,6 +570,10 @@ clean-docker-volumes:
 	rpc-format \
 	rpc-check \
 	rpc-js-compile \
+	wasm-assets \
+	wasm-build \
+	wasm-test \
+	wasm-clean \
 	mobile-rpc \
 	vendor \
 	ios \

@@ -89,3 +89,8 @@ coverage.txt
 
 # All test data generated from rapid.
 */testdata
+
+# WASM demo generated assets and local JS dependencies.
+node_modules/
+test-results/
+web/lndwasm/static/
