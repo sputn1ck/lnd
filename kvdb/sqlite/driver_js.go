@@ -1,4 +1,4 @@
-//go:build kvdb_sqlite && !js && !(windows && (arm || 386)) && !(linux && (ppc64 || mips || mipsle || mips64))
+//go:build js && wasm && kvdb_sqlite
 
 package sqlite
 
@@ -84,14 +84,13 @@ func openDBDriver(args ...interface{}) (walletdb.DB, error) {
 }
 
 func init() {
-	// Register the driver.
 	driver := walletdb.Driver{
 		DbType: dbType,
 		Create: createDBDriver,
 		Open:   openDBDriver,
 	}
 	if err := walletdb.RegisterDriver(driver); err != nil {
-		panic(fmt.Sprintf("Failed to regiser database driver '%s': %v",
+		panic(fmt.Sprintf("failed to register database driver '%s': %v",
 			dbType, err))
 	}
 }

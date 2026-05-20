@@ -391,22 +391,39 @@ func (b *readWriteBucket) SetSequence(v uint64) error {
 	}
 
 	result, err := b.tx.Exec(
-		"UPDATE "+b.table+" SET sequence=$2 WHERE id=$1",
-		b.id, int64(v),
+		"UPDATE "+b.table+" SET sequence=$1 WHERE id=$2",
+		int64(v), *b.id,
 	)
 	if err != nil {
 		return err
 	}
 
 	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows != 1 {
+	if err != nil || rows != 1 {
+		if b.sequenceMatches(v) {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
 		return errors.New("cannot set sequence")
 	}
 
 	return nil
+}
+
+func (b *readWriteBucket) sequenceMatches(v uint64) bool {
+	var seq int64
+	row, cancel := b.tx.QueryRow(
+		"SELECT sequence FROM "+b.table+" WHERE id=$1 "+
+			"AND sequence IS NOT NULL",
+		*b.id,
+	)
+	defer cancel()
+
+	return row.Scan(&seq) == nil && uint64(seq) == v
 }
 
 // Sequence returns the current sequence number for this bucket without
@@ -420,7 +437,7 @@ func (b *readWriteBucket) Sequence() uint64 {
 	row, cancel := b.tx.QueryRow(
 		"SELECT sequence FROM "+b.table+" WHERE id=$1 "+
 			"AND sequence IS NOT NULL",
-		b.id,
+		*b.id,
 	)
 	defer cancel()
 	err := row.Scan(&seq)
