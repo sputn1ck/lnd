@@ -24,6 +24,7 @@ import (
 	"github.com/lightningnetwork/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/signal"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -611,6 +612,7 @@ func runCommandLoop(conn *grpc.ClientConn, bitcoind *bitcoindNode) {
 	scanner := bufio.NewScanner(os.Stdin)
 	encoder := json.NewEncoder(os.Stdout)
 	client := lnrpc.NewLightningClient(conn)
+	router := routerrpc.NewRouterClient(conn)
 	var acceptCancel context.CancelFunc
 
 	for scanner.Scan() {
@@ -696,7 +698,7 @@ func runCommandLoop(conn *grpc.ClientConn, bitcoind *bitcoindNode) {
 			})
 
 		case "pay_invoice":
-			payment, err := payInvoice(client, cmd.Invoice)
+			payment, err := payInvoice(router, cmd.Invoice)
 			if err != nil {
 				writeResult(encoder, commandResult{
 					ID:    cmd.ID,
@@ -709,8 +711,8 @@ func runCommandLoop(conn *grpc.ClientConn, bitcoind *bitcoindNode) {
 			writeResult(encoder, commandResult{
 				ID:              cmd.ID,
 				OK:              true,
-				PaymentHash:     hex.EncodeToString(payment.PaymentHash),
-				PaymentPreimage: hex.EncodeToString(payment.PaymentPreimage),
+				PaymentHash:     payment.PaymentHash,
+				PaymentPreimage: payment.PaymentPreimage,
 			})
 
 		default:
@@ -835,28 +837,41 @@ func invoiceRouteHints(ctx context.Context, client lnrpc.LightningClient,
 	return nil, fmt.Errorf("active channel for route hint peer %s not found", peer)
 }
 
-func payInvoice(client lnrpc.LightningClient,
-	invoice string) (*lnrpc.SendResponse, error) {
+func payInvoice(client routerrpc.RouterClient,
+	invoice string) (*lnrpc.Payment, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	resp, err := client.SendPaymentSync(ctx, &lnrpc.SendRequest{
-		PaymentRequest: invoice,
-		FeeLimit: &lnrpc.FeeLimit{
-			Limit: &lnrpc.FeeLimit_Fixed{
-				Fixed: 1000,
-			},
-		},
+	stream, err := client.SendPaymentV2(ctx, &routerrpc.SendPaymentRequest{
+		PaymentRequest:    invoice,
+		FeeLimitSat:       1000,
+		TimeoutSeconds:    60,
+		NoInflightUpdates: true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	if resp.PaymentError != "" {
-		return nil, errors.New(resp.PaymentError)
-	}
 
-	return resp, nil
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil, errors.New("payment stream closed before final state")
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		switch resp.Status {
+		case lnrpc.Payment_SUCCEEDED:
+			return resp, nil
+
+		case lnrpc.Payment_FAILED:
+			return nil, fmt.Errorf(
+				"payment failed: %v", resp.FailureReason,
+			)
+		}
+	}
 }
 
 func openZeroConf(client lnrpc.LightningClient, pubkey string) (string, error) {

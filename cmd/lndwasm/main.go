@@ -6,11 +6,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"strconv"
 	"syscall/js"
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/wasmsdk"
 )
 
@@ -608,14 +610,6 @@ func payInvoice(_ js.Value, args []js.Value) any {
 		}
 		defer clients.Close()
 
-		req := &lnrpc.SendRequest{
-			PaymentRequest: args[0].String(),
-			FeeLimit: &lnrpc.FeeLimit{
-				Limit: &lnrpc.FeeLimit_Fixed{
-					Fixed: 1000,
-				},
-			},
-		}
 		if len(args) > 1 && args[1].String() != "" {
 			chanID, err := strconv.ParseUint(args[1].String(), 10, 64)
 			if err != nil {
@@ -624,46 +618,80 @@ func payInvoice(_ js.Value, args []js.Value) any {
 			}
 
 			resp, err := payInvoiceToRoute(
-				ctx, clients.Lightning, args[0].String(), chanID,
+				ctx, clients.Lightning, clients.Router, args[0].String(),
+				chanID,
 			)
 			if err != nil {
 				reject.Invoke(withDaemonStatus(err).Error())
 				return
 			}
-			if resp.PaymentError != "" {
-				reject.Invoke(resp.PaymentError)
-				return
-			}
 
 			result := js.Global().Get("Object").New()
-			result.Set("paymentHash", hex.EncodeToString(resp.PaymentHash))
+			result.Set("paymentHash", resp.PaymentHash)
 			result.Set(
 				"paymentPreimage",
-				hex.EncodeToString(resp.PaymentPreimage),
+				resp.PaymentPreimage,
 			)
 			resolve.Invoke(result)
 			return
 		}
 
-		resp, err := clients.Lightning.SendPaymentSync(ctx, req)
+		resp, err := payInvoiceWithRouter(ctx, clients.Router, args[0].String())
 		if err != nil {
 			reject.Invoke(withDaemonStatus(err).Error())
 			return
 		}
-		if resp.PaymentError != "" {
-			reject.Invoke(resp.PaymentError)
-			return
-		}
 
 		result := js.Global().Get("Object").New()
-		result.Set("paymentHash", hex.EncodeToString(resp.PaymentHash))
-		result.Set("paymentPreimage", hex.EncodeToString(resp.PaymentPreimage))
+		result.Set("paymentHash", resp.PaymentHash)
+		result.Set("paymentPreimage", resp.PaymentPreimage)
 		resolve.Invoke(result)
 	})
 }
 
+func payInvoiceWithRouter(ctx context.Context, client routerrpc.RouterClient,
+	invoice string) (*lnrpc.Payment, error) {
+
+	stream, err := client.SendPaymentV2(ctx, &routerrpc.SendPaymentRequest{
+		PaymentRequest:    invoice,
+		FeeLimitSat:       1000,
+		TimeoutSeconds:    60,
+		NoInflightUpdates: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return finalPayment(stream)
+}
+
+func finalPayment(stream routerrpc.Router_SendPaymentV2Client) (*lnrpc.Payment,
+	error) {
+
+	for {
+		payment, err := stream.Recv()
+		if err == io.EOF {
+			return nil, fmt.Errorf("payment stream closed before final state")
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		switch payment.Status {
+		case lnrpc.Payment_SUCCEEDED:
+			return payment, nil
+
+		case lnrpc.Payment_FAILED:
+			return nil, fmt.Errorf(
+				"payment failed: %v", payment.FailureReason,
+			)
+		}
+	}
+}
+
 func payInvoiceToRoute(ctx context.Context, client lnrpc.LightningClient,
-	invoice string, chanID uint64) (*lnrpc.SendResponse, error) {
+	router routerrpc.RouterClient, invoice string,
+	chanID uint64) (*lnrpc.Payment, error) {
 
 	payReq, err := client.DecodePayReq(ctx, &lnrpc.PayReqString{
 		PayReq: invoice,
@@ -720,7 +748,7 @@ func payInvoiceToRoute(ctx context.Context, client lnrpc.LightningClient,
 		}
 	}
 
-	return client.SendToRouteSync(ctx, &lnrpc.SendToRouteRequest{
+	attempt, err := router.SendToRouteV2(ctx, &routerrpc.SendToRouteRequest{
 		PaymentHash: paymentHash,
 		Route: &lnrpc.Route{
 			TotalTimeLock:      expiry,
@@ -730,6 +758,18 @@ func payInvoiceToRoute(ctx context.Context, client lnrpc.LightningClient,
 			Hops:               []*lnrpc.Hop{hop},
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
+	if attempt.Status != lnrpc.HTLCAttempt_SUCCEEDED {
+		return nil, fmt.Errorf("payment attempt failed: %v", attempt.Failure)
+	}
+
+	return &lnrpc.Payment{
+		PaymentHash:     hex.EncodeToString(paymentHash),
+		PaymentPreimage: hex.EncodeToString(attempt.Preimage),
+		Status:          lnrpc.Payment_SUCCEEDED,
+	}, nil
 }
 
 func waitInvoiceSettled(_ js.Value, args []js.Value) any {
