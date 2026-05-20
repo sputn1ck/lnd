@@ -469,6 +469,7 @@ wasm-assets:
 	mkdir -p $(WASM_STATIC_DIR)
 	$(GOCC) run ./cmd/lndwasmassets $(WASM_STATIC_DIR)
 	$(CP) web/lndwasm/index.html $(WASM_STATIC_DIR)/index.html
+	$(CP) web/lndwasm/_headers $(WASM_STATIC_DIR)/_headers
 
 #? wasm-build: Build the lnd browser WASM binary and gzip copy
 wasm-build: wasm-assets

@@ -120,8 +120,9 @@
         </label>
         <label class="span-4">Storage
           <select id="storage-vfs" data-testid="storage-vfs">
-            <option value="opfs-sahpool" selected>opfs-sahpool</option>
-            <option value="opfs-wl">opfs-wl</option>
+            <option value="auto" selected>opfs-wl + fallback</option>
+            <option value="opfs-wl">opfs-wl only</option>
+            <option value="opfs-sahpool">opfs-sahpool</option>
             <option value="opfs">opfs</option>
             <option value="memory">memory</option>
           </select>
@@ -270,6 +271,7 @@
     window.__lndWasmReady = false;
     window.__lndWasmFailure = "";
     window.__lndWasmLogs = [];
+    window.__lndWasmStorage = null;
 
     function formatLogArg(value) {
       if (value instanceof Error) {
@@ -335,28 +337,84 @@
       button.disabled = busy;
     }
 
-    function storageInfo() {
-      const vfs = $("storage-vfs").value || "opfs-sahpool";
+    function selectedStorageVFS() {
+      return $("storage-vfs").value || "auto";
+    }
+
+    function requestedStorageVFSFromOpen(args) {
+      if (!args || !args.length) {
+        return selectedStorageVFS();
+      }
+      const first = args[0];
+      if (typeof first === "string") {
+        return args[1] || "opfs";
+      }
+      if (first && typeof first === "object" && first.vfs) {
+        return first.vfs;
+      }
+      return selectedStorageVFS();
+    }
+
+    function normalizeStorageInfo(info) {
+      const requestedVFS = info?.requestedVFS || selectedStorageVFS();
+      const activeVFS = info?.activeVFS || info?.resolvedVFS || (
+        requestedVFS === "memory" ? "memory" : "opening"
+      );
+      const memory = activeVFS === "memory";
       return {
-        requestedVFS: vfs,
-        persistent: vfs !== "memory",
-        memory: vfs === "memory",
+        requestedVFS,
+        activeVFS,
+        resolvedVFS: info?.resolvedVFS || activeVFS,
+        persistent: memory ? false : !!info?.persistent,
+        memory,
       };
     }
 
-    function renderStorageInfo(info = storageInfo()) {
+    function storageInfo() {
+      return normalizeStorageInfo({ requestedVFS: selectedStorageVFS() });
+    }
+
+    function renderStorageInfo(info = window.__lndWasmStorage || storageInfo()) {
+      const normalized = normalizeStorageInfo(info);
       const warning = $("storage-warning");
-      warning.classList.toggle("hidden", !info.memory);
+      warning.classList.toggle("hidden", !normalized.memory);
       writeResult("storage-status", {
-        requestedVFS: info.requestedVFS,
-        persistent: info.persistent,
-        memory: info.memory,
-      }, info.memory ? "danger" : "ok");
+        requestedVFS: normalized.requestedVFS,
+        activeVFS: normalized.activeVFS,
+        persistent: normalized.persistent,
+        memory: normalized.memory,
+        crossOriginIsolated: window.crossOriginIsolated,
+        atomicsWaitAsync: typeof Atomics.waitAsync === "function",
+      }, normalized.memory ? "danger" : "ok");
+    }
+
+    function installStorageProbe() {
+      const bridge = window.sqliteBridge;
+      if (!bridge || typeof bridge.open !== "function" || bridge.__lndWasmStorageProbe) {
+        return;
+      }
+
+      const open = bridge.open.bind(bridge);
+      bridge.open = async (...args) => {
+        const requestedVFS = requestedStorageVFSFromOpen(args);
+        const result = await open(...args);
+        const activeVFS = result.vfsType || result.resolvedVFS || "unknown";
+        const info = normalizeStorageInfo({
+          requestedVFS,
+          activeVFS,
+          resolvedVFS: result.resolvedVFS || activeVFS,
+          persistent: !!result.persistent,
+        });
+        window.__lndWasmStorage = info;
+        window.dispatchEvent(new CustomEvent("lndwasm-storage", { detail: info }));
+        return result;
+      };
+      bridge.__lndWasmStorageProbe = true;
     }
 
     function configuredArgs() {
       window.lndWasmBitcoinNetwork = $("network").value;
-      window.lndWasmSQLiteVFS = $("storage-vfs").value || "opfs-sahpool";
+      window.lndWasmSQLiteVFS = selectedStorageVFS();
       const esploraURL = $("esplora-url").value.trim();
       const peerProxyURL = $("peer-proxy-url").value.trim();
       if (esploraURL) window.lndWasmEsploraURL = esploraURL;
@@ -376,7 +434,7 @@
       try {
         const result = await window.lndWasmStart(args || configuredArgs());
         result.wallet = await window.lndWasmEnsureWallet($("wallet-password").value);
-        result.storage = storageInfo();
+        result.storage = window.__lndWasmStorage || storageInfo();
         window.__lndWasmWallet = result.wallet;
         window.__lndWasmReady = true;
         $("setup-view").classList.add("hidden");
@@ -535,11 +593,18 @@
 
     $("refresh-peers").addEventListener("click", refreshPeers);
     $("refresh-channels").addEventListener("click", refreshChannels);
-    $("storage-vfs").addEventListener("change", () => renderStorageInfo());
+    $("storage-vfs").addEventListener("change", () => {
+      window.__lndWasmStorage = null;
+      renderStorageInfo();
+    });
+    window.addEventListener("lndwasm-storage", (event) => {
+      renderStorageInfo(event.detail);
+    });
     $("clear-logs").addEventListener("click", () => {
       window.__lndWasmLogs = [];
       $("log-output").textContent = "";
     });
+    installStorageProbe();
     renderStorageInfo();
     setInterval(() => {
       if (window.__lndWasmReady) refreshAll();

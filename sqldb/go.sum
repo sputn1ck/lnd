@@ -124,8 +124,8 @@ github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
-github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520104911-3c6019cdba96 h1:0+zjiiBN7KLThu09hgCIuMPXkSmNJhXoi03jyfK4edM=
-github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520104911-3c6019cdba96/go.mod h1:smtl2tHPgT8YNeAhcIublaMUct///YTSHTxxZ7CBW1w=
+github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520120252-ad47958a84d3 h1:2KqRacgERvYZUUxsQqKMUmXPrYBLM/QXM087g0Ttqmg=
+github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520120252-ad47958a84d3/go.mod h1:smtl2tHPgT8YNeAhcIublaMUct///YTSHTxxZ7CBW1w=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=

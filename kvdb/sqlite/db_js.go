@@ -15,7 +15,9 @@ import (
 	_ "github.com/sputn1ck/go-wasmsqlite"
 )
 
-const defaultWasmSQLiteVFS = "opfs-sahpool"
+// defaultWasmSQLiteVFS uses go-wasmsqlite's automatic browser preference order:
+// opfs-wl, opfs-sahpool, opfs, then memory if persistent storage is unavailable.
+const defaultWasmSQLiteVFS = "auto"
 
 // NewSqliteBackend returns a db object initialized with the passed backend
 // config. The browser build uses go-wasmsqlite, which provides OPFS-backed
@@ -60,5 +62,4 @@ func setWasmSQLiteStorage(values url.Values, fileName string) {
 	values.Set("file", fileName)
 	values.Set("vfs", vfs)
 	values.Set("journal_mode", "WAL")
-	values.Set("require_persistent", "true")
 }

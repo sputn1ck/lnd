@@ -8,7 +8,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
-	github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520104911-3c6019cdba96
+	github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520120252-ad47958a84d3
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
 	modernc.org/sqlite v1.29.10

@@ -17,7 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const defaultWasmSQLiteVFS = "opfs-sahpool"
+// defaultWasmSQLiteVFS uses go-wasmsqlite's automatic browser preference order:
+// opfs-wl, opfs-sahpool, opfs, then memory if persistent storage is unavailable.
+const defaultWasmSQLiteVFS = "auto"
 
 var (
 	// sqliteSchemaReplacements maps schema strings to their SQLite
@@ -189,7 +191,6 @@ func setWasmSQLiteStorage(values url.Values, fileName string) {
 	values.Set("file", fileName)
 	values.Set("vfs", vfs)
 	values.Set("journal_mode", "WAL")
-	values.Set("require_persistent", "true")
 }
 
 // NewTestSqliteDBWithVersion is a helper function that creates an SQLite

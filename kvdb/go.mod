@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/lightningnetwork/lnd/healthcheck v1.2.4
 	github.com/lightningnetwork/lnd/sqldb v1.0.6
-	github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520104911-3c6019cdba96
+	github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520120252-ad47958a84d3
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.4.3
 	go.etcd.io/etcd/api/v3 v3.5.12

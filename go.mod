@@ -47,6 +47,7 @@ require (
 	github.com/ltcsuite/ltcd v0.0.0-20190101042124-f37f8bf35796
 	github.com/miekg/dns v1.1.43
 	github.com/prometheus/client_golang v1.11.1
+	github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520120252-ad47958a84d3
 	github.com/stretchr/testify v1.11.1
 	github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02
 	github.com/urfave/cli v1.22.9
@@ -65,10 +66,7 @@ require (
 	pgregory.net/rapid v1.2.0
 )
 
-require (
-	github.com/btcsuite/btcd/v2transport v1.0.1 // indirect
-	github.com/sputn1ck/go-wasmsqlite v0.0.0-20260520104911-3c6019cdba96 // indirect
-)
+require github.com/btcsuite/btcd/v2transport v1.0.1 // indirect
 
 require (
 	dario.cat/mergo v1.0.1 // indirect

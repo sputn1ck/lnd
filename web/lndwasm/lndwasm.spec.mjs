@@ -28,15 +28,16 @@ test("starts lnd in browser wasm and reaches RPC ready", async ({ page }) => {
     await page.getByTestId("network").selectOption("regtest");
     await page.getByTestId("esplora-url").fill("");
     await page.getByTestId("peer-proxy-url").fill("");
-    await expect(page.getByTestId("storage-status")).toContainText("opfs-sahpool");
+    await expect(page.getByTestId("storage-status")).toContainText("auto");
     await page.getByTestId("storage-vfs").selectOption("memory");
     await expect(page.getByTestId("storage-warning")).toBeVisible();
-    await page.getByTestId("storage-vfs").selectOption("opfs-sahpool");
+    await page.getByTestId("storage-vfs").selectOption("auto");
     await expect(page.getByTestId("storage-warning")).toBeHidden();
     const result = await page.evaluate(async () => window.startLndWasmDemo());
 
   expect(result.rpcReady).toBe(true);
-  expect(result.storage.requestedVFS).toBe("opfs-sahpool");
+  expect(result.storage.requestedVFS).toBe("auto");
+  expect(result.storage.activeVFS).toBe("opfs-wl");
   expect(result.storage.persistent).toBe(true);
   expect(result.walletState).toBeTruthy();
   expect(result.wallet.walletState).toMatch(/RPC_ACTIVE|SERVER_ACTIVE/);
