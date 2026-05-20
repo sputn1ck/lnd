@@ -24,6 +24,7 @@ import (
 	"github.com/lightningnetwork/lnd/autopilot"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/chanacceptor"
+	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/cluster"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -39,6 +40,7 @@ import (
 	"github.com/lightningnetwork/lnd/watchtower"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"gopkg.in/macaroon-bakery.v2/bakery"
 	"gopkg.in/macaroon.v2"
@@ -135,6 +137,19 @@ type ListenerCfg struct {
 	// RPCListeners can be set to the listeners to use for the RPC server.
 	// If empty a regular network listener will be created.
 	RPCListeners []*ListenerWithSignal
+
+	// Net overrides lnd's peer network implementation. This is intended for
+	// environments that cannot use raw TCP sockets directly, such as browser
+	// WASM builds that need a WebSocket/WebTransport bridge.
+	Net tor.Net
+
+	// BackupSwapper overrides lnd's channel backup persistence. This is
+	// intended for environments that cannot use direct filesystem access.
+	BackupSwapper chanbackup.Swapper
+
+	// SkipTLS disables TLS setup for injected listeners. This is intended
+	// for in-process transports such as browser WASM bufconn listeners.
+	SkipTLS bool
 }
 
 var errStreamIsolationWithProxySkip = errors.New(
@@ -214,6 +229,10 @@ func Main(cfg *Config, lisCfg ListenerCfg, implCfg *ImplementationCfg,
 		"active_chain", strings.Title(BitcoinChainName),
 		"network", network)
 
+	if lisCfg.Net != nil {
+		cfg.net = lisCfg.Net
+	}
+
 	// Enable http profiling server if requested.
 	if cfg.Pprof.Profile != "" {
 		// Create the http handler.
@@ -286,32 +305,48 @@ func Main(cfg *Config, lisCfg ListenerCfg, implCfg *ImplementationCfg,
 		return mkErr("error initializing DBs", err)
 	}
 
-	tlsManagerCfg := &TLSManagerCfg{
-		TLSCertPath:        cfg.TLSCertPath,
-		TLSKeyPath:         cfg.TLSKeyPath,
-		TLSEncryptKey:      cfg.TLSEncryptKey,
-		TLSExtraIPs:        cfg.TLSExtraIPs,
-		TLSExtraDomains:    cfg.TLSExtraDomains,
-		TLSAutoRefresh:     cfg.TLSAutoRefresh,
-		TLSDisableAutofill: cfg.TLSDisableAutofill,
-		TLSCertDuration:    cfg.TLSCertDuration,
+	var (
+		serverOpts   []grpc.ServerOption
+		restDialOpts []grpc.DialOption
+		restListen   func(net.Addr) (net.Listener, error)
+		tlsManager   *TLSManager
+	)
+	if lisCfg.SkipTLS {
+		restDialOpts = []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		}
+	} else {
+		tlsManagerCfg := &TLSManagerCfg{
+			TLSCertPath:        cfg.TLSCertPath,
+			TLSKeyPath:         cfg.TLSKeyPath,
+			TLSEncryptKey:      cfg.TLSEncryptKey,
+			TLSExtraIPs:        cfg.TLSExtraIPs,
+			TLSExtraDomains:    cfg.TLSExtraDomains,
+			TLSAutoRefresh:     cfg.TLSAutoRefresh,
+			TLSDisableAutofill: cfg.TLSDisableAutofill,
+			TLSCertDuration:    cfg.TLSCertDuration,
 
-		LetsEncryptDir:    cfg.LetsEncryptDir,
-		LetsEncryptDomain: cfg.LetsEncryptDomain,
-		LetsEncryptListen: cfg.LetsEncryptListen,
+			LetsEncryptDir:    cfg.LetsEncryptDir,
+			LetsEncryptDomain: cfg.LetsEncryptDomain,
+			LetsEncryptListen: cfg.LetsEncryptListen,
 
-		DisableRestTLS: cfg.DisableRestTLS,
+			DisableRestTLS: cfg.DisableRestTLS,
 
-		HTTPHeaderTimeout: cfg.HTTPHeaderTimeout,
-	}
-	tlsManager := NewTLSManager(tlsManagerCfg)
-	serverOpts, restDialOpts, restListen, cleanUp,
-		err := tlsManager.SetCertificateBeforeUnlock()
-	if err != nil {
-		return mkErr("error setting cert before unlock", err)
-	}
-	if cleanUp != nil {
-		defer cleanUp()
+			HTTPHeaderTimeout: cfg.HTTPHeaderTimeout,
+		}
+		tlsManager = NewTLSManager(tlsManagerCfg)
+		certServerOpts, certRestDialOpts, certRestListen, cleanUp,
+			err := tlsManager.SetCertificateBeforeUnlock()
+		if err != nil {
+			return mkErr("error setting cert before unlock", err)
+		}
+		if cleanUp != nil {
+			defer cleanUp()
+		}
+
+		serverOpts = certServerOpts
+		restDialOpts = certRestDialOpts
+		restListen = certRestListen
 	}
 
 	// If we have chosen to start with a dedicated listener for the
@@ -400,17 +435,19 @@ func Main(cfg *Config, lisCfg ListenerCfg, implCfg *ImplementationCfg,
 		return mkErr("error starting gRPC listener", err)
 	}
 
-	// Now start the REST proxy for our gRPC server above. We'll ensure
-	// we direct LND to connect to its loopback address rather than a
-	// wildcard to prevent certificate issues when accessing the proxy
-	// externally.
-	stopProxy, err := startRestProxy(
-		ctx, cfg, rpcServer, restDialOpts, restListen,
-	)
-	if err != nil {
-		return mkErr("error starting REST proxy", err)
+	if !cfg.DisableRest {
+		// Now start the REST proxy for our gRPC server above. We'll
+		// ensure we direct LND to connect to its loopback address rather
+		// than a wildcard to prevent certificate issues when accessing
+		// the proxy externally.
+		stopProxy, err := startRestProxy(
+			ctx, cfg, rpcServer, restDialOpts, restListen,
+		)
+		if err != nil {
+			return mkErr("error starting REST proxy", err)
+		}
+		defer stopProxy()
 	}
-	defer stopProxy()
 
 	// Start leader election if we're running on etcd. Continuation will be
 	// blocked until this instance is elected as the current leader or
@@ -629,7 +666,7 @@ func Main(cfg *Config, lisCfg ListenerCfg, implCfg *ImplementationCfg,
 		ctx, cfg, cfg.Listeners, dbs, activeChainControl, &idKeyDesc,
 		activeChainControl.Cfg.WalletUnlockParams.ChansToRestore,
 		multiAcceptor, torController, tlsManager, leaderElector,
-		implCfg,
+		implCfg, lisCfg.BackupSwapper,
 	)
 	if err != nil {
 		return mkErr("unable to create server", err)
@@ -655,9 +692,13 @@ func Main(cfg *Config, lisCfg ListenerCfg, implCfg *ImplementationCfg,
 	}
 	defer atplManager.Stop()
 
-	err = tlsManager.LoadPermanentCertificate(activeChainControl.KeyRing)
-	if err != nil {
-		return mkErr("unable to load permanent TLS certificate", err)
+	if !lisCfg.SkipTLS {
+		err = tlsManager.LoadPermanentCertificate(
+			activeChainControl.KeyRing,
+		)
+		if err != nil {
+			return mkErr("unable to load permanent TLS certificate", err)
+		}
 	}
 
 	// Now we have created all dependencies necessary to populate and
