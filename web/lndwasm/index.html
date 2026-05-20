@@ -112,11 +112,11 @@
             <option value="mainnet">mainnet</option>
           </select>
         </label>
-        <label class="span-8">Esplora API
-          <input id="esplora-url" data-testid="esplora-url" value="https://mempool.space/signet/api">
-        </label>
-        <label class="span-8">Peer proxy
-          <input id="peer-proxy-url" data-testid="peer-proxy-url" value="wss://konwss.tunn.dev/lightning">
+        <label class="span-4">Chain backend
+          <select id="chain-backend" data-testid="chain-backend">
+            <option value="mempool" selected>mempool.space</option>
+            <option value="neutrino">neutrino</option>
+          </select>
         </label>
         <label class="span-4">Storage
           <select id="storage-vfs" data-testid="storage-vfs">
@@ -126,6 +126,21 @@
             <option value="opfs">opfs</option>
             <option value="memory">memory</option>
           </select>
+        </label>
+        <label class="span-8 chain-backend-esplora">Esplora API
+          <input id="esplora-url" data-testid="esplora-url" value="https://mempool.space/signet/api">
+        </label>
+        <label class="span-8 chain-backend-neutrino hidden">Neutrino peer proxy
+          <input id="neutrino-proxy-url" data-testid="neutrino-proxy-url" value="wss://konwss.tunn.dev/peer-proxy">
+        </label>
+        <label class="span-4 chain-backend-neutrino hidden">Neutrino DNS
+          <input id="neutrino-dns-url" data-testid="neutrino-dns-url" value="https://cloudflare-dns.com/dns-query">
+        </label>
+        <label class="span-12 chain-backend-neutrino hidden">Neutrino compact-filter peers
+          <textarea id="neutrino-peers" data-testid="neutrino-peers" placeholder="host:port for Bitcoin P2P peers advertising NODE_COMPACT_FILTERS"></textarea>
+        </label>
+        <label class="span-8">Lightning peer proxy
+          <input id="peer-proxy-url" data-testid="peer-proxy-url" value="wss://konwss.tunn.dev/lightning">
         </label>
         <label class="span-4">Wallet password
           <input id="wallet-password" data-testid="wallet-password" type="password" value="lnd-wasm-demo">
@@ -272,7 +287,6 @@
     window.__lndWasmFailure = "";
     window.__lndWasmLogs = [];
     window.__lndWasmStorage = null;
-
     function formatLogArg(value) {
       if (value instanceof Error) {
         return value.stack || value.message;
@@ -414,20 +428,48 @@
 
     function configuredArgs() {
       window.lndWasmBitcoinNetwork = $("network").value;
+      window.lndWasmChainBackend = $("chain-backend").value;
       window.lndWasmSQLiteVFS = selectedStorageVFS();
       const esploraURL = $("esplora-url").value.trim();
+      const neutrinoProxyURL = $("neutrino-proxy-url").value.trim();
+      const neutrinoDNSURL = $("neutrino-dns-url").value.trim();
+      const neutrinoPeers = $("neutrino-peers").value.trim();
       const peerProxyURL = $("peer-proxy-url").value.trim();
-      if (esploraURL) window.lndWasmEsploraURL = esploraURL;
+      window.lndWasmEsploraURL = "";
+      window.lndWasmNeutrinoProxyURL = "";
+      window.lndWasmNeutrinoDNSURL = "";
+      window.lndWasmNeutrinoPeers = "";
+      if (window.lndWasmChainBackend === "neutrino") {
+        if (neutrinoProxyURL) window.lndWasmNeutrinoProxyURL = neutrinoProxyURL;
+        if (neutrinoDNSURL) window.lndWasmNeutrinoDNSURL = neutrinoDNSURL;
+        if (neutrinoPeers) window.lndWasmNeutrinoPeers = neutrinoPeers;
+      } else if (esploraURL) {
+        window.lndWasmEsploraURL = esploraURL;
+      }
       if (peerProxyURL) window.lndWasmPeerProxyURL = peerProxyURL;
       const storage = storageInfo();
       renderStorageInfo(storage);
       console.info("configured lnd wasm", {
         network: window.lndWasmBitcoinNetwork,
+        chainBackend: window.lndWasmChainBackend,
         esploraURL,
+        neutrinoProxyURL,
+        neutrinoDNSURL,
+        neutrinoPeers,
         peerProxyURL,
         storage,
       });
       return window.lndWasmDefaultArgs();
+    }
+
+    function renderChainBackend() {
+      const isNeutrino = $("chain-backend").value === "neutrino";
+      document.querySelectorAll(".chain-backend-esplora").forEach((element) => {
+        element.classList.toggle("hidden", isNeutrino);
+      });
+      document.querySelectorAll(".chain-backend-neutrino").forEach((element) => {
+        element.classList.toggle("hidden", !isNeutrino);
+      });
     }
 
     window.startLndWasmDemo = async (args) => {
@@ -597,6 +639,7 @@
       window.__lndWasmStorage = null;
       renderStorageInfo();
     });
+    $("chain-backend").addEventListener("change", renderChainBackend);
     window.addEventListener("lndwasm-storage", (event) => {
       renderStorageInfo(event.detail);
     });
@@ -605,6 +648,7 @@
       $("log-output").textContent = "";
     });
     installStorageProbe();
+    renderChainBackend();
     renderStorageInfo();
     setInterval(() => {
       if (window.__lndWasmReady) refreshAll();

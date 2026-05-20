@@ -1752,9 +1752,12 @@ func initNeutrinoBackend(ctx context.Context, cfg *Config, chainDir string,
 		chainDir, lncfg.NormalizeNetwork(cfg.ActiveNetParams.Name),
 	)
 
-	// Ensure that the neutrino db path exists.
-	if err := os.MkdirAll(dbPath, 0700); err != nil {
-		return nil, nil, err
+	// Ensure that the neutrino db path exists. Browser WASM uses the
+	// neutrino SQL backend and cannot create directories through os.MkdirAll.
+	if !useNeutrinoWasmSQL(cfg) {
+		if err := os.MkdirAll(dbPath, 0700); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	var (
@@ -1762,6 +1765,8 @@ func initNeutrinoBackend(ctx context.Context, cfg *Config, chainDir string,
 		err error
 	)
 	switch {
+	case useNeutrinoWasmSQL(cfg):
+
 	case cfg.DB.Backend == kvdb.SqliteBackendName:
 		sqliteConfig := lncfg.GetSqliteConfigKVDB(cfg.DB.Sqlite)
 		db, err = kvdb.Open(
@@ -1803,7 +1808,10 @@ func initNeutrinoBackend(ctx context.Context, cfg *Config, chainDir string,
 		cfg.NeutrinoMode.AssertFilterHeader,
 	)
 	if err != nil {
-		db.Close()
+		if db != nil {
+			db.Close()
+		}
+
 		return nil, nil, err
 	}
 
@@ -1864,6 +1872,15 @@ func initNeutrinoBackend(ctx context.Context, cfg *Config, chainDir string,
 		config.HeadersImport = importCfg
 	}
 
+	err = applyNeutrinoWasmOptions(&config, cfg)
+	if err != nil {
+		if db != nil {
+			db.Close()
+		}
+
+		return nil, nil, err
+	}
+
 	if cfg.NeutrinoMode.MaxPeers <= 0 {
 		return nil, nil, fmt.Errorf("a non-zero number must be set " +
 			"for neutrino max peers")
@@ -1875,13 +1892,19 @@ func initNeutrinoBackend(ctx context.Context, cfg *Config, chainDir string,
 
 	neutrinoCS, err := neutrino.NewChainService(config)
 	if err != nil {
-		db.Close()
+		if db != nil {
+			db.Close()
+		}
+
 		return nil, nil, fmt.Errorf("unable to create neutrino light "+
 			"client: %v", err)
 	}
 
 	if err := neutrinoCS.Start(ctx); err != nil {
-		db.Close()
+		if db != nil {
+			db.Close()
+		}
+
 		return nil, nil, err
 	}
 
@@ -1890,7 +1913,9 @@ func initNeutrinoBackend(ctx context.Context, cfg *Config, chainDir string,
 			ltndLog.Infof("Unable to stop neutrino light client: "+
 				"%v", err)
 		}
-		db.Close()
+		if db != nil {
+			db.Close()
+		}
 	}
 
 	return neutrinoCS, cleanUp, nil

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"syscall/js"
 	"time"
 
@@ -1094,9 +1095,8 @@ func jsArrayToStrings(value js.Value) []string {
 
 func defaultStartArgs() []string {
 	network := "regtest"
-	networkValue := js.Global().Get("lndWasmBitcoinNetwork")
-	if networkValue.Type() == js.TypeString && networkValue.String() != "" {
-		network = networkValue.String()
+	if value := jsGlobalString("lndWasmBitcoinNetwork"); value != "" {
+		network = value
 	}
 
 	chainArgs := []string{
@@ -1104,15 +1104,29 @@ func defaultStartArgs() []string {
 		"--bitcoin." + network,
 	}
 
-	esploraURL := js.Global().Get("lndWasmEsploraURL")
-	if esploraURL.Type() == js.TypeString && esploraURL.String() != "" {
+	backend := jsGlobalString("lndWasmChainBackend")
+	esploraURL := jsGlobalString("lndWasmEsploraURL")
+	switch backend {
+	case "neutrino":
+		chainArgs = append(chainArgs, "--bitcoin.node=neutrino")
+		for _, peer := range jsGlobalStrings("lndWasmNeutrinoPeers") {
+			chainArgs = append(chainArgs, "--neutrino.connect="+peer)
+		}
+
+	case "", "mempool", "esplora":
+		if esploraURL == "" {
+			chainArgs = append(chainArgs, "--bitcoin.node=nochainbackend")
+			break
+		}
+
 		chainArgs = append(
 			chainArgs,
 			"--bitcoin.node=esplora",
-			"--bitcoin.esploraurl="+esploraURL.String(),
+			"--bitcoin.esploraurl="+esploraURL,
 			"--bitcoin.esplorapollinterval=500ms",
 		)
-	} else {
+
+	default:
 		chainArgs = append(chainArgs, "--bitcoin.node=nochainbackend")
 	}
 
@@ -1138,4 +1152,50 @@ func defaultStartArgs() []string {
 		"--protocol.zero-conf",
 		fmt.Sprintf("--trickledelay=%d", int64(time.Millisecond)),
 	}...)
+}
+
+func jsGlobalString(name string) string {
+	value := js.Global().Get(name)
+	if value.Type() != js.TypeString {
+		return ""
+	}
+
+	return strings.TrimSpace(value.String())
+}
+
+func jsGlobalStrings(name string) []string {
+	value := js.Global().Get(name)
+	var raw []string
+	switch value.Type() {
+	case js.TypeString:
+		raw = strings.FieldsFunc(value.String(), func(r rune) bool {
+			return r == ',' || r == '\n' || r == '\r' || r == '\t' ||
+				r == ' '
+		})
+
+	case js.TypeObject:
+		length := value.Get("length")
+		if length.Type() != js.TypeNumber {
+			return nil
+		}
+
+		for i := 0; i < length.Int(); i++ {
+			raw = append(raw, value.Index(i).String())
+		}
+
+	default:
+		return nil
+	}
+
+	result := make([]string, 0, len(raw))
+	for _, item := range raw {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+
+		result = append(result, item)
+	}
+
+	return result
 }

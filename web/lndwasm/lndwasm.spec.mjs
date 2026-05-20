@@ -25,7 +25,24 @@ test("starts lnd in browser wasm and reaches RPC ready", async ({ page }) => {
       timeout: 60_000,
     });
 
+    await expect(page.getByTestId("chain-backend")).toHaveValue("mempool");
+    await page.getByTestId("chain-backend").selectOption("neutrino");
+    await expect(page.getByTestId("neutrino-proxy-url")).toBeVisible();
+    await expect(page.getByTestId("neutrino-dns-url")).toHaveValue(
+      "https://cloudflare-dns.com/dns-query",
+    );
+    await expect(page.getByTestId("neutrino-peers")).toHaveValue("");
+    await page.getByTestId("neutrino-peers").fill("127.0.0.1:38333");
+    const neutrinoArgs = await page.evaluate(() => {
+      window.lndWasmBitcoinNetwork = "signet";
+      window.lndWasmChainBackend = "neutrino";
+      window.lndWasmNeutrinoPeers = document.getElementById("neutrino-peers").value;
+      return window.lndWasmDefaultArgs();
+    });
+    expect(neutrinoArgs).toContain("--bitcoin.node=neutrino");
+    expect(neutrinoArgs).toContain("--neutrino.connect=127.0.0.1:38333");
     await page.getByTestId("network").selectOption("regtest");
+    await page.getByTestId("chain-backend").selectOption("mempool");
     await page.getByTestId("esplora-url").fill("");
     await page.getByTestId("peer-proxy-url").fill("");
     await expect(page.getByTestId("storage-status")).toContainText("auto");
