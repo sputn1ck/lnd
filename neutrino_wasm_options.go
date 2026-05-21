@@ -12,6 +12,7 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/btcsuite/btcd/blockchain"
 	"github.com/lightninglabs/neutrino"
 	neutrinosql "github.com/lightninglabs/neutrino/sqldb"
 	"github.com/lightninglabs/neutrino/wasmtransport"
@@ -69,6 +70,9 @@ func applyNeutrinoWasmOptions(config *neutrino.Config, cfg *Config) error {
 		)
 
 		return wasmtransport.NewAddr(addr), nil
+	}
+	if config.HeadersImport != nil {
+		config.HeadersImport.ValidationFlags = blockchain.BFFastAdd
 	}
 
 	return nil

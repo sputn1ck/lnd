@@ -3,6 +3,8 @@ import { spawn } from "node:child_process";
 import readline from "node:readline";
 
 const repoRoot = new URL("../..", import.meta.url).pathname;
+const peerProxyURL = process.env.LND_WASM_PEER_PROXY_URL ||
+  "ws://127.0.0.1:8765/peer-proxy";
 
 test.afterEach(async ({ page }) => {
   await page.evaluate(async () => {
@@ -41,6 +43,12 @@ test("starts lnd in browser wasm and reaches RPC ready", async ({ page }) => {
     });
     expect(neutrinoArgs).toContain("--bitcoin.node=neutrino");
     expect(neutrinoArgs).toContain("--neutrino.connect=127.0.0.1:38333");
+    expect(neutrinoArgs).toContain(
+      "--neutrino.blockheaderssource=https://signet.block-dn.org/headers/import/300000",
+    );
+    expect(neutrinoArgs).toContain(
+      "--neutrino.filterheaderssource=https://signet.block-dn.org/filter-headers/import/300000",
+    );
     await page.getByTestId("network").selectOption("regtest");
     await page.getByTestId("chain-backend").selectOption("mempool");
     await page.getByTestId("esplora-url").fill("");
@@ -79,11 +87,11 @@ test("connects to a brontide peer through the browser peer proxy", async ({ page
       timeout: 60_000,
     });
 
-    const result = await page.evaluate(async () => {
+    const result = await page.evaluate(async (proxyURL) => {
       window.lndWasmBitcoinNetwork = "regtest";
-      window.lndWasmPeerProxyURL = "ws://127.0.0.1:8765/peer-proxy";
+      window.lndWasmPeerProxyURL = proxyURL;
       return window.startLndWasmDemo(window.lndWasmDefaultArgs());
-    });
+    }, peerProxyURL);
     expect(result.wallet.identityPubkey).toMatch(/^[0-9a-f]{66}$/);
 
     const connect = await page.evaluate(
@@ -111,11 +119,11 @@ test("connects to a native lnd peer through the browser peer proxy", async ({ pa
       timeout: 60_000,
     });
 
-    const result = await page.evaluate(async () => {
+    const result = await page.evaluate(async (proxyURL) => {
       window.lndWasmBitcoinNetwork = "regtest";
-      window.lndWasmPeerProxyURL = "ws://127.0.0.1:8765/peer-proxy";
+      window.lndWasmPeerProxyURL = proxyURL;
       return window.startLndWasmDemo(window.lndWasmDefaultArgs());
-    });
+    }, peerProxyURL);
     expect(result.wallet.identityPubkey).toMatch(/^[0-9a-f]{66}$/);
 
     const connect = await page.evaluate(
@@ -143,14 +151,14 @@ test("opens a zero-conf channel from a chain-backed lnd peer", async ({ page }) 
       timeout: 60_000,
     });
 
-    const result = await page.evaluate(async ({ esploraURL }) => {
+    const result = await page.evaluate(async ({ esploraURL, proxyURL }) => {
       window.lndWasmBitcoinNetwork = "regtest";
-      window.lndWasmPeerProxyURL = "ws://127.0.0.1:8765/peer-proxy";
+      window.lndWasmPeerProxyURL = proxyURL;
       window.lndWasmEsploraURL = esploraURL;
       const started = await window.startLndWasmDemo(window.lndWasmDefaultArgs());
       await window.lndWasmAcceptZeroConfChannels();
       return started;
-    }, { esploraURL: peer.info.esplora_url });
+    }, { esploraURL: peer.info.esplora_url, proxyURL: peerProxyURL });
     expect(result.wallet.identityPubkey).toMatch(/^[0-9a-f]{66}$/);
 
     const connect = await page.evaluate(
@@ -237,10 +245,15 @@ test("drives the wallet interface through wallet, peer, channel, and payment ope
     });
 
     await page.getByTestId("esplora-url").fill(peer.info.esplora_url);
-    await page.getByTestId("peer-proxy-url").fill("ws://127.0.0.1:8765/peer-proxy");
+    await page.getByTestId("peer-proxy-url").fill(peerProxyURL);
     await page.getByTestId("network").selectOption("regtest");
     await page.getByTestId("start-wallet").click();
     await expect(page.locator("#dashboard-view")).toBeVisible({ timeout: 180_000 });
+
+    await page.getByTestId("get-info").click();
+    await expect(page.locator("#info-result")).toContainText("identityPubkey", {
+      timeout: 30_000,
+    });
 
     await page.getByTestId("new-address").click();
     await expect(page.locator("#address-result")).toContainText("bcrt", { timeout: 30_000 });
@@ -262,8 +275,9 @@ test("drives the wallet interface through wallet, peer, channel, and payment ope
     await page.getByTestId("send-coins").click();
     await expect(page.locator("#send-result")).toContainText("txid", { timeout: 60_000 });
 
-    await page.getByTestId("peer-pubkey").fill(peer.info.pubkey);
-    await page.getByTestId("peer-host").fill(peer.info.host);
+    await page.getByTestId("peer-address").fill(
+      `${peer.info.pubkey}@${peer.info.host}`,
+    );
     await page.getByTestId("connect-peer").click();
     await expect(page.getByTestId("peers-table")).toContainText(peer.info.pubkey, {
       timeout: 30_000,

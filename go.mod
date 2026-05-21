@@ -222,7 +222,7 @@ go 1.25.5
 
 retract v0.0.2
 
-replace github.com/lightninglabs/neutrino => github.com/sputn1ck/neutrino v0.16.3-0.20260520125248-d9dfe05c6cc4
+replace github.com/lightninglabs/neutrino => github.com/sputn1ck/neutrino v0.16.3-0.20260521203955-7265b0e49a81
 
 replace github.com/lightningnetwork/lnd/sqldb/v2 => ./sqldb/v2
 

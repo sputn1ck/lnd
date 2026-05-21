@@ -139,6 +139,12 @@
         <label class="span-12 chain-backend-neutrino hidden">Neutrino compact-filter peers
           <textarea id="neutrino-peers" data-testid="neutrino-peers" placeholder="host:port for Bitcoin P2P peers advertising NODE_COMPACT_FILTERS"></textarea>
         </label>
+        <label class="span-6 chain-backend-neutrino hidden">Neutrino block headers
+          <input id="neutrino-block-headers" data-testid="neutrino-block-headers" placeholder="auto block-dn.org">
+        </label>
+        <label class="span-6 chain-backend-neutrino hidden">Neutrino filter headers
+          <input id="neutrino-filter-headers" data-testid="neutrino-filter-headers" placeholder="auto block-dn.org">
+        </label>
         <label class="span-8">Lightning peer proxy
           <input id="peer-proxy-url" data-testid="peer-proxy-url" value="wss://konwss.tunn.dev/lightning">
         </label>
@@ -150,7 +156,7 @@
         Memory storage is active. Wallet, channel, and payment state will be lost when this tab or worker is reset.
       </div>
       <div class="row">
-        <button id="start-wallet" data-testid="start-wallet">Start wallet</button>
+        <button id="start-wallet" data-testid="start-wallet" disabled>Start wallet</button>
       </div>
       <div id="storage-status" class="result mono storage-status" data-testid="storage-status"></div>
       <div id="setup-result" class="result mono"></div>
@@ -173,6 +179,14 @@
       </div>
 
       <div class="grid">
+        <section class="panel span-12">
+          <h2>Node</h2>
+          <div class="row">
+            <button id="get-info" class="secondary" data-testid="get-info">Get info</button>
+          </div>
+          <div id="info-result" class="result mono"></div>
+        </section>
+
         <section class="panel span-6">
           <h2>Wallet</h2>
           <div class="row">
@@ -222,11 +236,8 @@
         <section class="panel span-6">
           <h2>Peers</h2>
           <div class="row">
-            <label>Pubkey
-              <input id="peer-pubkey" data-testid="peer-pubkey">
-            </label>
-            <label>Host
-              <input id="peer-host" data-testid="peer-host" placeholder="127.0.0.1:9735">
+            <label>Peer
+              <input id="peer-address" data-testid="peer-address" placeholder="pubkey@127.0.0.1:9735">
             </label>
             <button id="connect-peer" data-testid="connect-peer">Connect</button>
           </div>
@@ -351,6 +362,21 @@
       button.disabled = busy;
     }
 
+    function wasmAPIReady() {
+      return typeof window.lndWasmDefaultArgs === "function" &&
+        typeof window.lndWasmStart === "function";
+    }
+
+    async function waitForWasmAPI(timeoutMs = 30000) {
+      const deadline = Date.now() + timeoutMs;
+      while (!wasmAPIReady()) {
+        if (Date.now() > deadline) {
+          throw new Error("lnd wasm API did not initialize");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+    }
+
     function selectedStorageVFS() {
       return $("storage-vfs").value || "auto";
     }
@@ -427,6 +453,10 @@
     }
 
     function configuredArgs() {
+      if (!wasmAPIReady()) {
+        throw new Error("lnd wasm is still initializing");
+      }
+
       window.lndWasmBitcoinNetwork = $("network").value;
       window.lndWasmChainBackend = $("chain-backend").value;
       window.lndWasmSQLiteVFS = selectedStorageVFS();
@@ -434,15 +464,25 @@
       const neutrinoProxyURL = $("neutrino-proxy-url").value.trim();
       const neutrinoDNSURL = $("neutrino-dns-url").value.trim();
       const neutrinoPeers = $("neutrino-peers").value.trim();
+      const neutrinoBlockHeaders = $("neutrino-block-headers").value.trim();
+      const neutrinoFilterHeaders = $("neutrino-filter-headers").value.trim();
       const peerProxyURL = $("peer-proxy-url").value.trim();
       window.lndWasmEsploraURL = "";
       window.lndWasmNeutrinoProxyURL = "";
       window.lndWasmNeutrinoDNSURL = "";
       window.lndWasmNeutrinoPeers = "";
+      window.lndWasmNeutrinoBlockHeadersSource = "";
+      window.lndWasmNeutrinoFilterHeadersSource = "";
       if (window.lndWasmChainBackend === "neutrino") {
         if (neutrinoProxyURL) window.lndWasmNeutrinoProxyURL = neutrinoProxyURL;
         if (neutrinoDNSURL) window.lndWasmNeutrinoDNSURL = neutrinoDNSURL;
         if (neutrinoPeers) window.lndWasmNeutrinoPeers = neutrinoPeers;
+        if (neutrinoBlockHeaders) {
+          window.lndWasmNeutrinoBlockHeadersSource = neutrinoBlockHeaders;
+        }
+        if (neutrinoFilterHeaders) {
+          window.lndWasmNeutrinoFilterHeadersSource = neutrinoFilterHeaders;
+        }
       } else if (esploraURL) {
         window.lndWasmEsploraURL = esploraURL;
       }
@@ -456,10 +496,28 @@
         neutrinoProxyURL,
         neutrinoDNSURL,
         neutrinoPeers,
+        neutrinoBlockHeaders,
+        neutrinoFilterHeaders,
         peerProxyURL,
         storage,
       });
       return window.lndWasmDefaultArgs();
+    }
+
+    function parsePeerAddress(value) {
+      const peer = value.trim();
+      const at = peer.indexOf("@");
+      if (at <= 0 || at === peer.length - 1) {
+        throw new Error("peer must be pubkey@host:port");
+      }
+
+      const pubkey = peer.slice(0, at).trim();
+      const host = peer.slice(at + 1).trim();
+      if (!pubkey || !host) {
+        throw new Error("peer must be pubkey@host:port");
+      }
+
+      return { pubkey, host };
     }
 
     function renderChainBackend() {
@@ -540,6 +598,7 @@
       buttonBusy(button, true);
       setStatus("starting");
       try {
+        await waitForWasmAPI();
         const result = await window.startLndWasmDemo(configuredArgs());
         writeResult("setup-result", result, "ok");
       } catch (error) {
@@ -573,18 +632,28 @@
       }
     });
 
+    $("get-info").addEventListener("click", async () => {
+      try {
+        const result = await window.lndWasmGetInfo();
+        writeResult("info-result", result, "ok");
+      } catch (error) {
+        writeResult("info-result", error.message || String(error), "danger");
+      }
+    });
+
     $("connect-peer").addEventListener("click", async () => {
       try {
+        const peer = parsePeerAddress($("peer-address").value);
         console.info("connect peer requested", {
-          pubkey: $("peer-pubkey").value.trim(),
-          host: $("peer-host").value.trim(),
+          pubkey: peer.pubkey,
+          host: peer.host,
           proxy: window.lndWasmPeerProxyURL || $("peer-proxy-url").value.trim(),
         });
         const result = await window.lndWasmConnectPeer(
-          $("peer-pubkey").value.trim(),
-          $("peer-host").value.trim(),
+          peer.pubkey,
+          peer.host,
         );
-        $("channel-pubkey").value = $("peer-pubkey").value.trim();
+        $("channel-pubkey").value = peer.pubkey;
         writeResult("connect-result", result, "ok");
         await refreshPeers();
       } catch (error) {
@@ -705,6 +774,9 @@
           console.error("go wasm runtime failed", error);
           window.__lndWasmFailure = error && (error.stack || error.message) || String(error);
         });
+        setStatus("initializing wasm");
+        await waitForWasmAPI();
+        $("start-wallet").disabled = false;
         setStatus("ready");
       } catch (error) {
         console.error("wasm bootstrap failed", error);

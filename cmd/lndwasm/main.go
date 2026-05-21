@@ -20,6 +20,8 @@ import (
 var instance *wasmsdk.Instance
 var acceptorCancel context.CancelFunc
 
+const startTimeout = 10 * time.Minute
+
 func main() {
 	js.Global().Set("lndWasmDefaultArgs", js.FuncOf(defaultArgs))
 	js.Global().Set("lndWasmStart", js.FuncOf(start))
@@ -109,9 +111,7 @@ func start(_ js.Value, args []js.Value) any {
 			startArgs = jsArrayToStrings(args[0])
 		}
 
-		ctx, cancel := context.WithTimeout(
-			context.Background(), 3*time.Minute,
-		)
+		ctx, cancel := context.WithTimeout(context.Background(), startTimeout)
 		defer cancel()
 
 		opts := wasmsdk.StartOptions{
@@ -837,7 +837,7 @@ func ensureWallet(_ js.Value, args []js.Value) any {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), startTimeout)
 		defer cancel()
 
 		password := []byte("lnd-wasm-demo")
@@ -1112,6 +1112,27 @@ func defaultStartArgs() []string {
 		for _, peer := range jsGlobalStrings("lndWasmNeutrinoPeers") {
 			chainArgs = append(chainArgs, "--neutrino.connect="+peer)
 		}
+		blockHeaders, filterHeaders := jsGlobalString(
+			"lndWasmNeutrinoBlockHeadersSource",
+		), jsGlobalString("lndWasmNeutrinoFilterHeadersSource")
+		if blockHeaders == "" && filterHeaders == "" {
+			blockHeaders, filterHeaders = defaultNeutrinoHeaderSources(
+				network,
+			)
+		}
+		if blockHeaders != "" || filterHeaders != "" {
+			chainArgs = append(
+				chainArgs,
+				"--neutrino.blockheaderssource="+blockHeaders,
+				"--neutrino.filterheaderssource="+filterHeaders,
+			)
+		}
+		if network == "mainnet" {
+			chainArgs = append(
+				chainArgs,
+				"--fee.url=https://nodes.lightning.computer/fees/v1/btc-fee-estimates.json",
+			)
+		}
 
 	case "", "mempool", "esplora":
 		if esploraURL == "" {
@@ -1152,6 +1173,25 @@ func defaultStartArgs() []string {
 		"--protocol.zero-conf",
 		fmt.Sprintf("--trickledelay=%d", int64(time.Millisecond)),
 	}...)
+}
+
+func defaultNeutrinoHeaderSources(network string) (string, string) {
+	switch network {
+	case "mainnet":
+		return "https://block-dn.org/headers/import/900000",
+			"https://block-dn.org/filter-headers/import/900000"
+
+	case "testnet":
+		return "https://testnet3.block-dn.org/headers/import/4700000",
+			"https://testnet3.block-dn.org/filter-headers/import/4700000"
+
+	case "signet":
+		return "https://signet.block-dn.org/headers/import/300000",
+			"https://signet.block-dn.org/filter-headers/import/300000"
+
+	default:
+		return "", ""
+	}
 }
 
 func jsGlobalString(name string) string {
