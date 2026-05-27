@@ -666,7 +666,7 @@ func newServer(ctx context.Context, cfg *Config, listenAddrs []net.Addr,
 	chanPredicate chanacceptor.ChannelAcceptor,
 	torController *tor.Controller, tlsManager *TLSManager,
 	leaderElector cluster.LeaderElector,
-	implCfg *ImplementationCfg) (*server, error) {
+	implCfg *ImplementationCfg, backupSwapper chanbackup.Swapper) (*server, error) {
 
 	var (
 		err         error
@@ -1743,9 +1743,11 @@ func newServer(ctx context.Context, cfg *Config, listenAddrs []net.Addr,
 		chanNotifier: s.channelNotifier,
 		addrs:        s.addrSource,
 	}
-	backupFile := chanbackup.NewMultiFile(
-		cfg.BackupFilePath, cfg.NoBackupArchive,
-	)
+	if backupSwapper == nil {
+		backupSwapper = chanbackup.NewMultiFile(
+			cfg.BackupFilePath, cfg.NoBackupArchive,
+		)
+	}
 	startingChans, err := chanbackup.FetchStaticChanBackups(
 		ctx, s.chanStateDB, s.addrSource,
 	)
@@ -1753,7 +1755,7 @@ func newServer(ctx context.Context, cfg *Config, listenAddrs []net.Addr,
 		return nil, err
 	}
 	s.chanSubSwapper, err = chanbackup.NewSubSwapper(
-		ctx, startingChans, chanNotifier, s.cc.KeyRing, backupFile,
+		ctx, startingChans, chanNotifier, s.cc.KeyRing, backupSwapper,
 	)
 	if err != nil {
 		return nil, err
@@ -2102,7 +2104,10 @@ func (s *server) createLivenessMonitor(cfg *Config, cc *chainreg.ChainControl,
 	)
 
 	checks := []*healthcheck.Observation{
-		chainHealthCheck, diskCheck, tlsHealthCheck,
+		chainHealthCheck, diskCheck,
+	}
+	if s.tlsManager != nil {
+		checks = append(checks, tlsHealthCheck)
 	}
 
 	// If Tor is enabled, add the healthcheck for tor connection.
