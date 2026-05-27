@@ -2,6 +2,7 @@ package lncfg
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/lightningnetwork/lnd/lnwire"
 )
@@ -13,7 +14,10 @@ type Chain struct {
 	Active   bool   `long:"active" description:"DEPRECATED: If the chain should be active or not. This field is now ignored since only the Bitcoin chain is supported" hidden:"true"`
 	ChainDir string `long:"chaindir" description:"The directory to store the chain's data within."`
 
-	Node string `long:"node" description:"The blockchain interface to use." choice:"btcd" choice:"bitcoind" choice:"neutrino" choice:"nochainbackend"`
+	Node string `long:"node" description:"The blockchain interface to use." choice:"btcd" choice:"bitcoind" choice:"neutrino" choice:"esplora" choice:"nochainbackend"`
+
+	EsploraURL          string        `long:"esploraurl" description:"The Esplora/mempool.space compatible API URL to use when bitcoin.node=esplora."`
+	EsploraPollInterval time.Duration `long:"esplorapollinterval" description:"How often to poll the Esplora backend for new blocks when bitcoin.node=esplora."`
 
 	MainNet         bool     `long:"mainnet" description:"Use the main network"`
 	TestNet3        bool     `long:"testnet" description:"Use the test network"`

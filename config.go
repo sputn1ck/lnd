@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/lightningnetwork/lnd/autopilot"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/chainreg"
+	chainreg_esplora "github.com/lightningnetwork/lnd/chainreg/esplora"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/discovery"
@@ -640,13 +642,14 @@ func DefaultConfig() Config {
 		WSPingInterval:    lnrpc.DefaultPingInterval,
 		WSPongWait:        lnrpc.DefaultPongWait,
 		Bitcoin: &lncfg.Chain{
-			MinHTLCIn:     chainreg.DefaultBitcoinMinHTLCInMSat,
-			MinHTLCOut:    chainreg.DefaultBitcoinMinHTLCOutMSat,
-			BaseFee:       chainreg.DefaultBitcoinBaseFeeMSat,
-			FeeRate:       chainreg.DefaultBitcoinFeeRate,
-			TimeLockDelta: chainreg.DefaultBitcoinTimeLockDelta,
-			MaxLocalDelay: defaultMaxLocalCSVDelay,
-			Node:          btcdBackendName,
+			MinHTLCIn:           chainreg.DefaultBitcoinMinHTLCInMSat,
+			MinHTLCOut:          chainreg.DefaultBitcoinMinHTLCOutMSat,
+			BaseFee:             chainreg.DefaultBitcoinBaseFeeMSat,
+			FeeRate:             chainreg.DefaultBitcoinFeeRate,
+			TimeLockDelta:       chainreg.DefaultBitcoinTimeLockDelta,
+			MaxLocalDelay:       defaultMaxLocalCSVDelay,
+			Node:                btcdBackendName,
+			EsploraPollInterval: chainreg_esplora.DefaultPollInterval,
 		},
 		BtcdMode: &lncfg.Btcd{
 			Dir:     defaultBtcdDir,
@@ -994,6 +997,10 @@ func ValidateConfig(cfg Config, interceptor signal.Interceptor, fileParser,
 		return fmt.Errorf(funcName+": "+format, args...)
 	}
 	makeDirectory := func(dir string) error {
+		if runtime.GOOS == "js" {
+			return nil
+		}
+
 		err := os.MkdirAll(dir, 0700)
 		if err != nil {
 			// Show a nicer error message if it's because a symlink
@@ -1400,12 +1407,15 @@ func ValidateConfig(cfg Config, interceptor signal.Interceptor, fileParser,
 	case neutrinoBackendName:
 		// No need to get RPC parameters.
 
+	case "esplora":
+		// No need to get RPC parameters.
+
 	case "nochainbackend":
 		// Nothing to configure, we're running without any chain
 		// backend whatsoever (pure signing mode).
 
 	default:
-		str := "only btcd, bitcoind, and neutrino mode " +
+		str := "only btcd, bitcoind, neutrino, and esplora mode " +
 			"supported for bitcoin at this time"
 
 		return nil, mkErr(str)
@@ -1549,13 +1559,15 @@ func ValidateConfig(cfg Config, interceptor signal.Interceptor, fileParser,
 		cfg.LogConfig.File.MaxLogFileSize = cfg.MaxLogFileSize
 	}
 
-	err = cfg.LogRotator.InitLogRotator(
-		cfg.LogConfig.File,
-		filepath.Join(cfg.LogDir, defaultLogFilename),
-	)
-	if err != nil {
-		str := "log rotation setup failed: %v"
-		return nil, mkErr(str, err)
+	if !cfg.LogConfig.File.Disable {
+		err = cfg.LogRotator.InitLogRotator(
+			cfg.LogConfig.File,
+			filepath.Join(cfg.LogDir, defaultLogFilename),
+		)
+		if err != nil {
+			str := "log rotation setup failed: %v"
+			return nil, mkErr(str, err)
+		}
 	}
 
 	// Parse, validate, and set debug log level(s).
