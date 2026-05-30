@@ -42,9 +42,10 @@ const (
 )
 
 type readyInfo struct {
-	Pubkey     string `json:"pubkey"`
-	Host       string `json:"host"`
-	EsploraURL string `json:"esplora_url"`
+	Pubkey       string `json:"pubkey"`
+	Host         string `json:"host"`
+	EsploraURL   string `json:"esplora_url"`
+	NeutrinoPeer string `json:"neutrino_peer"`
 }
 
 type command struct {
@@ -55,6 +56,7 @@ type command struct {
 	Address string `json:"address,omitempty"`
 	Amount  int64  `json:"amount,omitempty"`
 	Invoice string `json:"invoice,omitempty"`
+	Blocks  int    `json:"blocks,omitempty"`
 }
 
 type commandResult struct {
@@ -78,6 +80,7 @@ type bitcoindNode struct {
 	name    string
 	network string
 	rpcHost string
+	p2pHost string
 	dataDir string
 }
 
@@ -149,9 +152,10 @@ func main() {
 
 	host := net.JoinHostPort("127.0.0.1", strconv.Itoa(p2pPort))
 	if err := json.NewEncoder(os.Stdout).Encode(readyInfo{
-		Pubkey:     info.IdentityPubkey,
-		Host:       host,
-		EsploraURL: electrs.url,
+		Pubkey:       info.IdentityPubkey,
+		Host:         host,
+		EsploraURL:   electrs.url,
+		NeutrinoPeer: bitcoind.p2pHost,
 	}); err != nil {
 		exitErr("write peer info", err)
 	}
@@ -163,6 +167,10 @@ func startBitcoind(ctx context.Context, tempDir string) (*bitcoindNode,
 	error) {
 
 	rpcPort, err := freePort()
+	if err != nil {
+		return nil, err
+	}
+	p2pPort, err := freePort()
 	if err != nil {
 		return nil, err
 	}
@@ -188,11 +196,14 @@ func startBitcoind(ctx context.Context, tempDir string) (*bitcoindNode,
 		"--name", name,
 		"--network", network,
 		"-p", fmt.Sprintf("127.0.0.1:%d:18443", rpcPort),
+		"-p", fmt.Sprintf("127.0.0.1:%d:18444", p2pPort),
 		"-v", dataDir + ":/home/bitcoin/.bitcoin",
 		"mirror.gcr.io/lightninglabs/bitcoin-core:29",
 		"-regtest",
 		"-server",
 		"-txindex",
+		"-blockfilterindex=1",
+		"-peerblockfilters=1",
 		"-fallbackfee=0.0002",
 		"-rpcuser=" + bitcoindRPCUser,
 		"-rpcpassword=" + bitcoindRPCPass,
@@ -213,6 +224,7 @@ func startBitcoind(ctx context.Context, tempDir string) (*bitcoindNode,
 		name:    name,
 		network: network,
 		rpcHost: net.JoinHostPort("127.0.0.1", strconv.Itoa(rpcPort)),
+		p2pHost: net.JoinHostPort("127.0.0.1", strconv.Itoa(p2pPort)),
 		dataDir: dataDir,
 	}
 	if err := waitForBitcoind(ctx, node); err != nil {
@@ -679,6 +691,57 @@ func runCommandLoop(conn *grpc.ClientConn, bitcoind *bitcoindNode) {
 				Channel: channel,
 			})
 
+		case "open_channel":
+			channel, err := openChannel(client, cmd.Pubkey, cmd.Amount)
+			if err != nil {
+				writeResult(encoder, commandResult{
+					ID:    cmd.ID,
+					OK:    false,
+					Error: err.Error(),
+				})
+				continue
+			}
+
+			writeResult(encoder, commandResult{
+				ID:      cmd.ID,
+				OK:      true,
+				Channel: channel,
+			})
+
+		case "mine_blocks":
+			blocks := cmd.Blocks
+			if blocks == 0 {
+				blocks = 1
+			}
+			if err := generateBlocks(context.Background(), bitcoind, blocks); err != nil {
+				writeResult(encoder, commandResult{
+					ID:    cmd.ID,
+					OK:    false,
+					Error: err.Error(),
+				})
+				continue
+			}
+
+			writeResult(encoder, commandResult{
+				ID: cmd.ID,
+				OK: true,
+			})
+
+		case "wait_channel_active":
+			if err := waitChannelActive(client, cmd.Pubkey); err != nil {
+				writeResult(encoder, commandResult{
+					ID:    cmd.ID,
+					OK:    false,
+					Error: err.Error(),
+				})
+				continue
+			}
+
+			writeResult(encoder, commandResult{
+				ID: cmd.ID,
+				OK: true,
+			})
+
 		case "create_invoice":
 			invoice, err := createInvoice(client, cmd.Amount, cmd.Pubkey)
 			if err != nil {
@@ -784,6 +847,65 @@ func acceptZeroConf(client lnrpc.LightningClient) (context.CancelFunc, error) {
 	}()
 
 	return cancel, nil
+}
+
+func openChannel(client lnrpc.LightningClient, pubkey string,
+	amount int64) (string, error) {
+
+	if amount == 0 {
+		amount = 20_000
+	}
+
+	nodePubkey, err := hex.DecodeString(pubkey)
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	channelPoint, err := client.OpenChannelSync(ctx, &lnrpc.OpenChannelRequest{
+		NodePubkey:         nodePubkey,
+		LocalFundingAmount: amount,
+		Private:            true,
+		MinConfs:           1,
+		SpendUnconfirmed:   false,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return channelPointString(channelPoint), nil
+}
+
+func waitChannelActive(client lnrpc.LightningClient, pubkey string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		channels, err := client.ListChannels(ctx, &lnrpc.ListChannelsRequest{})
+		if err != nil {
+			return err
+		}
+
+		for _, channel := range channels.Channels {
+			if channel.Active &&
+				strings.EqualFold(channel.RemotePubkey, pubkey) {
+
+				return nil
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case <-ticker.C:
+		}
+	}
 }
 
 func createInvoice(client lnrpc.LightningClient, amount int64,
