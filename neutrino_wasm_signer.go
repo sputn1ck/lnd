@@ -19,23 +19,28 @@ var wasmNeutrinoSigner = struct {
 	sign      func([]byte) (string, error)
 }{}
 
+type apertureNodeSigner interface {
+	SetSigner(string, func([]byte) (string, error))
+}
+
 func initNeutrinoBackendBeforeWallet(cfg *Config) bool {
 	return !useNeutrinoWasmSQL(cfg)
 }
 
-func prepareNeutrinoWasmSigner(cfg *Config,
+func prepareWasmApertureSigners(cfg *Config,
 	params *walletunlocker.WalletUnlockParams) error {
 
-	if !useNeutrinoWasmSQL(cfg) {
+	nodeSigner, hasNodeSigner := cfg.net.(apertureNodeSigner)
+	if !useNeutrinoWasmSQL(cfg) && !hasNodeSigner {
 		return nil
 	}
 	if params == nil || params.Wallet == nil {
-		return fmt.Errorf("wallet is required for wasm neutrino signer")
+		return fmt.Errorf("wallet is required for wasm aperture signer")
 	}
 	if err := params.Wallet.Unlock(params.Password, nil); err != nil &&
 		!strings.Contains(err.Error(), "wallet already unlocked") {
 
-		return fmt.Errorf("unlock wallet for wasm neutrino signer: %w",
+		return fmt.Errorf("unlock wallet for wasm aperture signer: %w",
 			err)
 	}
 
@@ -70,22 +75,28 @@ func prepareNeutrinoWasmSigner(cfg *Config,
 	}
 	keyDesc, err := keyRing.DeriveKey(keyLoc)
 	if err != nil {
-		return fmt.Errorf("derive wasm neutrino node key: %w", err)
+		return fmt.Errorf("derive wasm aperture node key: %w", err)
 	}
 
-	wasmNeutrinoSigner.Lock()
-	defer wasmNeutrinoSigner.Unlock()
-
-	wasmNeutrinoSigner.pubKeyHex = hex.EncodeToString(
-		keyDesc.PubKey.SerializeCompressed(),
-	)
-	wasmNeutrinoSigner.sign = func(payload []byte) (string, error) {
+	pubKeyHex := hex.EncodeToString(keyDesc.PubKey.SerializeCompressed())
+	sign := func(payload []byte) (string, error) {
 		sig, err := keyRing.SignMessage(keyLoc, payload, false)
 		if err != nil {
 			return "", err
 		}
 
 		return hex.EncodeToString(sig.Serialize()), nil
+	}
+
+	if useNeutrinoWasmSQL(cfg) {
+		wasmNeutrinoSigner.Lock()
+		wasmNeutrinoSigner.pubKeyHex = pubKeyHex
+		wasmNeutrinoSigner.sign = sign
+		wasmNeutrinoSigner.Unlock()
+	}
+
+	if hasNodeSigner {
+		nodeSigner.SetSigner(pubKeyHex, sign)
 	}
 
 	return nil

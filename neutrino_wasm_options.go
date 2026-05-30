@@ -30,6 +30,7 @@ func applyNeutrinoWasmOptions(config *neutrino.Config, cfg *Config) error {
 		DBFilename:           "neutrino.sqlite",
 		DNSURL:               dnsURL,
 		ChainParams:          cfg.ActiveNetParams.Params,
+		SQLiteVFS:            wasmGlobalString("lndWasmSQLiteVFS"),
 		ApertureProxyURL:     apertureProxyURL,
 		ApertureClientPubKey: wasmNeutrinoClientPubKey,
 		ApertureSignPayload:  wasmNeutrinoSignPayload,

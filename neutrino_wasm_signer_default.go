@@ -8,6 +8,6 @@ func initNeutrinoBackendBeforeWallet(*Config) bool {
 	return true
 }
 
-func prepareNeutrinoWasmSigner(*Config, *walletunlocker.WalletUnlockParams) error {
+func prepareWasmApertureSigners(*Config, *walletunlocker.WalletUnlockParams) error {
 	return nil
 }

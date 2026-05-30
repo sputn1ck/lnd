@@ -618,12 +618,11 @@ func (d *DefaultWalletImpl) BuildWalletConfig(ctx context.Context,
 		}
 	}
 
-	if mainChain.Node == "neutrino" && !initNeutrinoEarly {
-		err := prepareNeutrinoWasmSigner(d.cfg, &walletInitParams)
-		if err != nil {
-			return nil, nil, nil, err
-		}
+	if err := prepareWasmApertureSigners(d.cfg, &walletInitParams); err != nil {
+		return nil, nil, nil, err
+	}
 
+	if mainChain.Node == "neutrino" && !initNeutrinoEarly {
 		neutrinoBackend, neutrinoCleanUp, err := initNeutrinoBackend(
 			ctx, d.cfg, mainChain.ChainDir, blockCache,
 		)
