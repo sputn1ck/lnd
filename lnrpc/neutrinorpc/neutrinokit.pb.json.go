@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Conte
 	}
 
 	registry["neutrinorpc.NeutrinoKit.Status"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &StatusRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -47,7 +47,7 @@ func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Conte
 	}
 
 	registry["neutrinorpc.NeutrinoKit.AddPeer"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &AddPeerRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -72,7 +72,7 @@ func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Conte
 	}
 
 	registry["neutrinorpc.NeutrinoKit.DisconnectPeer"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &DisconnectPeerRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -97,7 +97,7 @@ func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Conte
 	}
 
 	registry["neutrinorpc.NeutrinoKit.IsBanned"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &IsBannedRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -122,7 +122,7 @@ func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Conte
 	}
 
 	registry["neutrinorpc.NeutrinoKit.GetBlockHeader"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetBlockHeaderRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -147,7 +147,7 @@ func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Conte
 	}
 
 	registry["neutrinorpc.NeutrinoKit.GetBlock"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetBlockRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -172,7 +172,7 @@ func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Conte
 	}
 
 	registry["neutrinorpc.NeutrinoKit.GetCFilter"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetCFilterRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -197,7 +197,7 @@ func RegisterNeutrinoKitJSONCallbacks(registry map[string]func(ctx context.Conte
 	}
 
 	registry["neutrinorpc.NeutrinoKit.GetBlockHash"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetBlockHashRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterPeersJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterPeersJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["peersrpc.Peers.UpdateNodeAnnouncement"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &NodeAnnouncementUpdateRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterChainKitJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterChainKitJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["chainrpc.ChainKit.GetBlock"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetBlockRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -47,7 +47,7 @@ func RegisterChainKitJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["chainrpc.ChainKit.GetBlockHeader"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetBlockHeaderRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -72,7 +72,7 @@ func RegisterChainKitJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["chainrpc.ChainKit.GetBestBlock"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetBestBlockRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -97,7 +97,7 @@ func RegisterChainKitJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["chainrpc.ChainKit.GetBlockHash"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetBlockHashRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

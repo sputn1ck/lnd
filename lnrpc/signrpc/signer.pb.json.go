@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.SignOutputRaw"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SignReq{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -47,7 +47,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.ComputeInputScript"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SignReq{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -72,7 +72,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.SignMessage"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SignMessageReq{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -97,7 +97,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.VerifyMessage"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &VerifyMessageReq{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -122,7 +122,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.DeriveSharedKey"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SharedKeyRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -147,7 +147,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.MuSig2CombineKeys"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &MuSig2CombineKeysRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -172,7 +172,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.MuSig2CreateSession"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &MuSig2SessionRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -197,7 +197,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.MuSig2RegisterNonces"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &MuSig2RegisterNoncesRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -222,7 +222,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.MuSig2RegisterCombinedNonce"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &MuSig2RegisterCombinedNonceRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -247,7 +247,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.MuSig2GetCombinedNonce"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &MuSig2GetCombinedNonceRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -272,7 +272,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.MuSig2Sign"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &MuSig2SignRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -297,7 +297,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.MuSig2CombineSig"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &MuSig2CombineSigRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -322,7 +322,7 @@ func RegisterSignerJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["signrpc.Signer.MuSig2Cleanup"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &MuSig2CleanupRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

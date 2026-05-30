@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.SendPaymentV2"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SendPaymentRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -64,7 +64,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.TrackPaymentV2"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &TrackPaymentRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -106,7 +106,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.TrackPayments"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &TrackPaymentsRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -148,7 +148,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.EstimateRouteFee"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &RouteFeeRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -173,7 +173,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.SendToRouteV2"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SendToRouteRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -198,7 +198,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.ResetMissionControl"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ResetMissionControlRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -223,7 +223,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.QueryMissionControl"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &QueryMissionControlRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -248,7 +248,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.XImportMissionControl"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &XImportMissionControlRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -273,7 +273,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.GetMissionControlConfig"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetMissionControlConfigRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -298,7 +298,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.SetMissionControlConfig"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SetMissionControlConfigRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -323,7 +323,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.QueryProbability"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &QueryProbabilityRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -348,7 +348,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.BuildRoute"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &BuildRouteRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -373,7 +373,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.SubscribeHtlcEvents"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SubscribeHtlcEventsRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -415,7 +415,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.UpdateChanStatus"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &UpdateChanStatusRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -440,7 +440,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.XAddLocalChanAliases"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &AddAliasesRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -465,7 +465,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.XDeleteLocalChanAliases"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &DeleteAliasesRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -490,7 +490,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.XFindBaseLocalChanAlias"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &FindBaseAliasRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -515,7 +515,7 @@ func RegisterRouterJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["routerrpc.Router.DeleteForwardingHistory"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &DeleteForwardingHistoryRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

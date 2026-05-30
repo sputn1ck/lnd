@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.
 	}
 
 	registry["wtclientrpc.WatchtowerClient.AddTower"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &AddTowerRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -47,7 +47,7 @@ func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.
 	}
 
 	registry["wtclientrpc.WatchtowerClient.RemoveTower"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &RemoveTowerRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -72,7 +72,7 @@ func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.
 	}
 
 	registry["wtclientrpc.WatchtowerClient.DeactivateTower"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &DeactivateTowerRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -97,7 +97,7 @@ func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.
 	}
 
 	registry["wtclientrpc.WatchtowerClient.TerminateSession"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &TerminateSessionRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -122,7 +122,7 @@ func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.
 	}
 
 	registry["wtclientrpc.WatchtowerClient.ListTowers"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ListTowersRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -147,7 +147,7 @@ func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.
 	}
 
 	registry["wtclientrpc.WatchtowerClient.GetTowerInfo"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetTowerInfoRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -172,7 +172,7 @@ func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.
 	}
 
 	registry["wtclientrpc.WatchtowerClient.Stats"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &StatsRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -197,7 +197,7 @@ func RegisterWatchtowerClientJSONCallbacks(registry map[string]func(ctx context.
 	}
 
 	registry["wtclientrpc.WatchtowerClient.Policy"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &PolicyRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

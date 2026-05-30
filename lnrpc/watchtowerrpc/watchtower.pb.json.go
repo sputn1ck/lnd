@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterWatchtowerJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterWatchtowerJSONCallbacks(registry map[string]func(ctx context.Contex
 	}
 
 	registry["watchtowerrpc.Watchtower.GetInfo"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetInfoRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

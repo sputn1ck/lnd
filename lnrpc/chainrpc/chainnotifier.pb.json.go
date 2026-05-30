@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterChainNotifierJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterChainNotifierJSONCallbacks(registry map[string]func(ctx context.Con
 	}
 
 	registry["chainrpc.ChainNotifier.RegisterConfirmationsNtfn"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ConfRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -64,7 +64,7 @@ func RegisterChainNotifierJSONCallbacks(registry map[string]func(ctx context.Con
 	}
 
 	registry["chainrpc.ChainNotifier.RegisterSpendNtfn"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SpendRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -106,7 +106,7 @@ func RegisterChainNotifierJSONCallbacks(registry map[string]func(ctx context.Con
 	}
 
 	registry["chainrpc.ChainNotifier.RegisterBlockEpochNtfn"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &BlockEpoch{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterWalletUnlockerJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterWalletUnlockerJSONCallbacks(registry map[string]func(ctx context.Co
 	}
 
 	registry["lnrpc.WalletUnlocker.GenSeed"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GenSeedRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -47,7 +47,7 @@ func RegisterWalletUnlockerJSONCallbacks(registry map[string]func(ctx context.Co
 	}
 
 	registry["lnrpc.WalletUnlocker.InitWallet"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &InitWalletRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -72,7 +72,7 @@ func RegisterWalletUnlockerJSONCallbacks(registry map[string]func(ctx context.Co
 	}
 
 	registry["lnrpc.WalletUnlocker.UnlockWallet"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &UnlockWalletRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -97,7 +97,7 @@ func RegisterWalletUnlockerJSONCallbacks(registry map[string]func(ctx context.Co
 	}
 
 	registry["lnrpc.WalletUnlocker.ChangePassword"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ChangePasswordRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

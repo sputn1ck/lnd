@@ -54,6 +54,7 @@ func NewSqliteStore(cfg *SqliteConfig, dbPath string) (*SqliteStore, error) {
 	wasmOptions := make(url.Values)
 	setWasmSQLiteStorage(wasmOptions, dbPath)
 	wasmOptions.Set("busy_timeout", fmt.Sprintf("%d", cfg.busyTimeoutMs()))
+	wasmOptions.Set("parse_time", "true")
 	wasmOptions.Set("pragma", strings.Join(pragmaOptions, ";"))
 
 	db, err := sql.Open("wasmsqlite", wasmOptions.Encode())

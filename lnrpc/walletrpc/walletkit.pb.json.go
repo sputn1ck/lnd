@@ -13,7 +13,7 @@ import (
 )
 
 func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -23,7 +23,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ListUnspent"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ListUnspentRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -48,7 +48,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.LeaseOutput"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &LeaseOutputRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -73,7 +73,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ReleaseOutput"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ReleaseOutputRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -98,7 +98,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ListLeases"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ListLeasesRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -123,7 +123,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.DeriveNextKey"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &KeyReq{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -148,7 +148,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.DeriveKey"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &signrpc.KeyLocator{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -173,7 +173,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.NextAddr"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &AddrRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -198,7 +198,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.GetTransaction"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetTransactionRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -223,7 +223,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ListAccounts"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ListAccountsRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -248,7 +248,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.RequiredReserve"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &RequiredReserveRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -273,7 +273,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ListAddresses"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ListAddressesRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -298,7 +298,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.SignMessageWithAddr"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SignMessageWithAddrRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -323,7 +323,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.VerifyMessageWithAddr"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &VerifyMessageWithAddrRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -348,7 +348,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ImportAccount"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ImportAccountRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -373,7 +373,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ImportPublicKey"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ImportPublicKeyRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -398,7 +398,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ImportTapscript"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ImportTapscriptRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -423,7 +423,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.PublishTransaction"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &Transaction{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -448,7 +448,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.RemoveTransaction"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &GetTransactionRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -473,7 +473,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.SendOutputs"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SendOutputsRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -498,7 +498,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.EstimateFee"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &EstimateFeeRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -523,7 +523,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.PendingSweeps"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &PendingSweepsRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -548,7 +548,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.BumpFee"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &BumpFeeRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -573,7 +573,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.BumpForceCloseFee"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &BumpForceCloseFeeRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -598,7 +598,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.ListSweeps"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ListSweepsRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -623,7 +623,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.LabelTransaction"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &LabelTransactionRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -648,7 +648,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.FundPsbt"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &FundPsbtRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -673,7 +673,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.SignPsbt"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SignPsbtRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -698,7 +698,7 @@ func RegisterWalletKitJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["walletrpc.WalletKit.FinalizePsbt"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &FinalizePsbtRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

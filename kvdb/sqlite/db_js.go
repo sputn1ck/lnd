@@ -34,6 +34,7 @@ func NewSqliteBackend(ctx context.Context, cfg *Config, dbPath, fileName,
 
 	wasmOptions := make(url.Values)
 	setWasmSQLiteStorage(wasmOptions, filepath.Join(dbPath, fileName))
+	wasmOptions.Set("parse_time", "true")
 	wasmOptions.Set("pragma", strings.Join(pragmaOptions, ";"))
 
 	sqlCfg := &sqlbase.Config{

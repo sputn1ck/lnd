@@ -13,7 +13,7 @@ import (
 )
 
 func RegisterDevJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -23,7 +23,7 @@ func RegisterDevJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["devrpc.Dev.ImportGraph"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &lnrpc.ChannelGraph{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -48,7 +48,7 @@ func RegisterDevJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["devrpc.Dev.Quiesce"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &QuiescenceRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterInvoicesJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterInvoicesJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["invoicesrpc.Invoices.SubscribeSingleInvoice"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SubscribeSingleInvoiceRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -64,7 +64,7 @@ func RegisterInvoicesJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["invoicesrpc.Invoices.CancelInvoice"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &CancelInvoiceMsg{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -89,7 +89,7 @@ func RegisterInvoicesJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["invoicesrpc.Invoices.AddHoldInvoice"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &AddHoldInvoiceRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -114,7 +114,7 @@ func RegisterInvoicesJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["invoicesrpc.Invoices.SettleInvoice"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SettleInvoiceMsg{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -139,7 +139,7 @@ func RegisterInvoicesJSONCallbacks(registry map[string]func(ctx context.Context,
 	}
 
 	registry["invoicesrpc.Invoices.LookupInvoiceV2"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &LookupInvoiceMsg{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)

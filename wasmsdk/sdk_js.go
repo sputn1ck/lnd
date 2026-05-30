@@ -48,6 +48,16 @@ type StartOptions struct {
 	// Browser builds use NewAperturePeerNet to bridge raw peer traffic
 	// through Aperture's authenticated tcpproxy endpoint.
 	PeerNet tor.Net
+
+	// ConfigureImplementation can mutate lnd's implementation config before
+	// lnd starts. Browser-hosted subservers use this to register additional
+	// gRPC services and aux components on the embedded lnd instance.
+	ConfigureImplementation func(*lnd.ImplementationCfg) error
+
+	// UseTLS keeps TLS enabled on the in-memory gRPC listener. The default is
+	// plaintext because the browser SDK normally keeps this transport
+	// in-process and away from the network.
+	UseTLS bool
 }
 
 // Instance is a running lnd daemon with RPC access over an in-memory gRPC
@@ -128,11 +138,11 @@ func Start(ctx context.Context, opts StartOptions) (*Instance, error) {
 		listener:    listener,
 		interceptor: interceptor,
 		done:        make(chan error, 1),
-		skipTLS:     true,
+		skipTLS:     !opts.UseTLS,
 	}
 
 	listenerCfg := lnd.ListenerCfg{
-		SkipTLS:       true,
+		SkipTLS:       !opts.UseTLS,
 		Net:           opts.PeerNet,
 		BackupSwapper: chanbackup.NewMemorySwapper(),
 		RPCListeners: []*lnd.ListenerWithSignal{{
@@ -141,6 +151,14 @@ func Start(ctx context.Context, opts StartOptions) (*Instance, error) {
 		}},
 	}
 	implCfg := cfg.ImplementationConfig(interceptor)
+	if opts.ConfigureImplementation != nil {
+		err := opts.ConfigureImplementation(implCfg)
+		if err != nil {
+			started.Store(false)
+			interceptor.RequestShutdown()
+			return nil, err
+		}
+	}
 
 	go func() {
 		defer started.Store(false)
@@ -198,6 +216,13 @@ func (i *Instance) AdminClients(ctx context.Context) (*Clients, error) {
 	}
 
 	return NewClients(conn), nil
+}
+
+// Dialer returns a gRPC context dialer for the embedded lnd RPC listener.
+func (i *Instance) Dialer() func(context.Context, string) (net.Conn, error) {
+	return func(ctx context.Context, _ string) (net.Conn, error) {
+		return i.listener.DialContext(ctx)
+	}
 }
 
 // NewClients creates typed RPC clients for an existing connection.
@@ -278,11 +303,7 @@ func (i *Instance) dial(ctx context.Context,
 		}
 	}
 
-	opts = append(opts, grpc.WithContextDialer(
-		func(ctx context.Context, _ string) (net.Conn, error) {
-			return i.listener.DialContext(ctx)
-		},
-	))
+	opts = append(opts, grpc.WithContextDialer(i.Dialer()))
 
 	return grpc.DialContext(ctx, "bufconn", opts...)
 }

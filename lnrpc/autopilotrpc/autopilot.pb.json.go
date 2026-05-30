@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterAutopilotJSONCallbacks(registry map[string]func(ctx context.Context,
-	conn *grpc.ClientConn, reqJSON string, callback func(string, error))) {
+	conn grpc.ClientConnInterface, reqJSON string, callback func(string, error))) {
 
 	marshaler := &gateway.JSONPb{
 		MarshalOptions: protojson.MarshalOptions{
@@ -22,7 +22,7 @@ func RegisterAutopilotJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["autopilotrpc.Autopilot.Status"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &StatusRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -47,7 +47,7 @@ func RegisterAutopilotJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["autopilotrpc.Autopilot.ModifyStatus"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &ModifyStatusRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -72,7 +72,7 @@ func RegisterAutopilotJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["autopilotrpc.Autopilot.QueryScores"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &QueryScoresRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
@@ -97,7 +97,7 @@ func RegisterAutopilotJSONCallbacks(registry map[string]func(ctx context.Context
 	}
 
 	registry["autopilotrpc.Autopilot.SetScores"] = func(ctx context.Context,
-		conn *grpc.ClientConn, reqJSON string, callback func(string, error)) {
+		conn grpc.ClientConnInterface, reqJSON string, callback func(string, error)) {
 
 		req := &SetScoresRequest{}
 		err := marshaler.Unmarshal([]byte(reqJSON), req)
