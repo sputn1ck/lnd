@@ -386,16 +386,36 @@ func (c *Client) BroadcastTx(ctx context.Context, tx *wire.MsgTx) (
 	if err := tx.Serialize(&buf); err != nil {
 		return nil, err
 	}
+	txHex := hex.EncodeToString(buf.Bytes())
 
 	_, err := c.post(
-		ctx, "/tx", hex.EncodeToString(buf.Bytes()), "text/plain",
+		ctx, "/tx", txHex, "text/plain",
 	)
 	if err != nil {
-		return nil, err
+		fallbackURL := broadcastFallbackURL(c.baseURL)
+		if fallbackURL == "" || !missingEndpoint(err) {
+			return nil, err
+		}
+
+		fallback := &Client{
+			baseURL: strings.TrimRight(fallbackURL, "/"),
+			http:    c.http,
+		}
+		_, fallbackErr := fallback.post(
+			ctx, "/tx", txHex, "text/plain",
+		)
+		if fallbackErr != nil {
+			return nil, fmt.Errorf("%w; fallback broadcast via "+
+				"%s failed: %v", err, fallbackURL, fallbackErr)
+		}
 	}
 
 	txid := tx.TxHash()
 	return &txid, nil
+}
+
+func missingEndpoint(err error) bool {
+	return strings.Contains(err.Error(), "endpoint does not exist")
 }
 
 func (c *Client) TestMempoolAccept(ctx context.Context, txns []*wire.MsgTx,

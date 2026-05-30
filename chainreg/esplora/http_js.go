@@ -18,6 +18,25 @@ func newHTTPClient() *http.Client {
 	}
 }
 
+func broadcastFallbackURL(baseURL string) string {
+	configured := js.Global().Get("lndWasmEsploraBroadcastURL")
+	if configured.Type() == js.TypeString && strings.TrimSpace(
+		configured.String(),
+	) != "" {
+
+		return configured.String()
+	}
+
+	if strings.Contains(
+		baseURL, "mempool-signet.testnet.lightningcluster.com",
+	) {
+
+		return "https://mempool.space/signet/api"
+	}
+
+	return ""
+}
+
 type jsFetchRoundTripper struct{}
 
 func (j jsFetchRoundTripper) RoundTrip(req *http.Request) (*http.Response,

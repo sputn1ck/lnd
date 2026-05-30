@@ -12,3 +12,7 @@ func newHTTPClient() *http.Client {
 		Timeout: 30 * time.Second,
 	}
 }
+
+func broadcastFallbackURL(string) string {
+	return ""
+}
