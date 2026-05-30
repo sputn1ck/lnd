@@ -15,15 +15,12 @@ import (
 )
 
 // NewAperturePeerNet creates a peer network that dials Lightning peer TCP
-// addresses through Aperture's authenticated tcpproxy service.
-func NewAperturePeerNet(proxyURL,
-	clientPrivateKeyHex string) (*AperturePeerNet, error) {
+// addresses through Aperture's authenticated tcpproxy service. The node signer
+// must be installed with SetSigner before the first peer dial.
+func NewAperturePeerNet(proxyURL string) (*AperturePeerNet, error) {
 
 	if proxyURL == "" {
 		return nil, errors.New("empty aperture peer proxy URL")
-	}
-	if clientPrivateKeyHex == "" {
-		return nil, errors.New("empty aperture client private key")
 	}
 
 	parsed, err := url.Parse(proxyURL)
@@ -39,10 +36,11 @@ func NewAperturePeerNet(proxyURL,
 	}
 	net.dialer = llwasmnet.NewApertureProxyDialer(
 		llwasmnet.ApertureProxyConfig{
-			URL:                 parsed.String(),
-			Profile:             "lnd",
-			ClientPrivateKeyHex: clientPrivateKeyHex,
-			TargetNodePubKey:    net.targetNodePubKey,
+			URL:              parsed.String(),
+			Profile:          "lnd",
+			ClientPubKey:     net.clientPubKey,
+			SignPayload:      net.signPayload,
+			TargetNodePubKey: net.targetNodePubKey,
 		},
 	)
 
@@ -56,6 +54,20 @@ type AperturePeerNet struct {
 
 	mu                sync.RWMutex
 	targetNodePubKeys map[string]string
+	clientPubKeyHex   string
+	signer            llwasmnet.AperturePayloadSigner
+}
+
+// SetSigner installs the lnd node identity signer used for Aperture control
+// frames.
+func (a *AperturePeerNet) SetSigner(pubKeyHex string,
+	signer llwasmnet.AperturePayloadSigner) {
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.clientPubKeyHex = strings.ToLower(strings.TrimSpace(pubKeyHex))
+	a.signer = signer
 }
 
 // RegisterTargetNodePubKey records the pubkey expected for a peer address.
@@ -154,6 +166,25 @@ func (a *AperturePeerNet) targetNodePubKey(addr net.Addr) string {
 	defer a.mu.RUnlock()
 
 	return a.targetNodePubKeys[addr.String()]
+}
+
+func (a *AperturePeerNet) clientPubKey() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	return a.clientPubKeyHex
+}
+
+func (a *AperturePeerNet) signPayload(payload []byte) (string, error) {
+	a.mu.RLock()
+	signer := a.signer
+	a.mu.RUnlock()
+
+	if signer == nil {
+		return "", errors.New("aperture lnd signer is not configured")
+	}
+
+	return signer(payload)
 }
 
 type peerProxyAddr string
