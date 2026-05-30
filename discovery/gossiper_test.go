@@ -4543,6 +4543,16 @@ func TestChanAnnBanningNonChanPeer(t *testing.T) {
 	))
 	require.ErrorContains(t, err, "ignoring closed channel")
 
+	for range DefaultBanThreshold {
+		err = mustProcess(t, tCtx.gossiper.ProcessRemoteAnnouncement(
+			ctx, ca, nodePeer2,
+		))
+		require.ErrorContains(t, err, "ignoring closed channel")
+	}
+
+	require.False(t, tCtx.gossiper.isBanned(nodePeer2.PubKey()))
+	require.False(t, nodePeer2.disconnected.Load())
+
 }
 
 // TestChanAnnBanningChanPeer asserts that channel peers that are banned don't

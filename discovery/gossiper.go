@@ -2751,15 +2751,8 @@ func (d *AuthenticatedGossiper) handleChanAnnouncement(ctx context.Context,
 			return nil, false
 		}
 
-		log.Warnf("Increasing ban score for peer=%v due to outdated "+
-			"channel announcement for channel %v", nMsg.peer, scid)
-
-		// Increment the peer's ban score if they are sending closed
-		// channel announcements.
-		dcErr := d.handleBadPeer(nMsg.peer)
-		if dcErr != nil {
-			err = dcErr
-		}
+		log.Debugf("Ignoring closed channel announcement from peer=%v "+
+			"for channel %v", nMsg.peer, scid)
 
 		completeGossipResult(nMsg.errPromise, err)
 
@@ -2900,6 +2893,22 @@ func (d *AuthenticatedGossiper) handleChanAnnouncement(ctx context.Context,
 
 					return nil, false
 				}
+
+				if !nMsg.isRemote {
+					log.Errorf("failed to add edge for local "+
+						"channel: %v", err)
+					completeGossipResult(nMsg.errPromise, err)
+
+					return nil, false
+				}
+
+				log.Debugf("Ignoring spent channel announcement "+
+					"from peer=%v for channel %v",
+					nMsg.peer, scid)
+
+				completeGossipResult(nMsg.errPromise, err)
+
+				return nil, false
 
 			default:
 				// Otherwise, this is just a regular rejected
