@@ -25,6 +25,11 @@ var (
 	ErrOutputNotFound = errors.New("target output was not found")
 )
 
+type utxoLookupBackend interface {
+	GetUtxo(op *wire.OutPoint, pkScript []byte, heightHint uint32,
+		cancel <-chan struct{}) (*wire.TxOut, error)
+}
+
 // GetBestBlock returns the current height and hash of the best known block
 // within the main chain.
 //
@@ -121,6 +126,9 @@ func (b *BtcWallet) GetUtxo(op *wire.OutPoint, pkScript []byte,
 			Value:    int64(amt),
 			PkScript: pkScript,
 		}, nil
+
+	case utxoLookupBackend:
+		return backend.GetUtxo(op, pkScript, heightHint, cancel)
 
 	default:
 		return nil, fmt.Errorf("unknown backend")

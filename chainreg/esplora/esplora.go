@@ -26,6 +26,7 @@ import (
 	"github.com/btcsuite/btcwallet/wtxmgr"
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	graphdb "github.com/lightningnetwork/lnd/graph/db"
+	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/lightningnetwork/lnd/routing/chainview"
 )
@@ -1222,6 +1223,46 @@ func (s *Source) GetBlockHeader(hash *chainhash.Hash) (
 	*wire.BlockHeader, error) {
 
 	return s.core.client.RawBlockHeader(context.Background(), *hash)
+}
+
+func (s *Source) GetUtxo(op *wire.OutPoint, pkScript []byte,
+	_ uint32, cancel <-chan struct{}) (*wire.TxOut, error) {
+
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
+
+	go func() {
+		select {
+		case <-cancel:
+			cancelCtx()
+
+		case <-ctx.Done():
+		}
+	}()
+
+	tx, err := s.core.client.RawTx(ctx, op.Hash)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", btcwallet.ErrOutputNotFound,
+			err)
+	}
+	if uint32(len(tx.TxOut)) <= op.Index {
+		return nil, btcwallet.ErrOutputNotFound
+	}
+
+	out := tx.TxOut[op.Index]
+	if !bytes.Equal(out.PkScript, pkScript) {
+		return nil, btcwallet.ErrOutputNotFound
+	}
+
+	spend, err := s.core.client.Outspend(ctx, *op)
+	if err != nil {
+		return nil, err
+	}
+	if spend.Spent {
+		return nil, btcwallet.ErrOutputSpent
+	}
+
+	return out, nil
 }
 
 func (s *Source) IsCurrent() bool {
