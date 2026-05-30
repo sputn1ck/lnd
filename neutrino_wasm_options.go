@@ -25,17 +25,14 @@ func applyNeutrinoWasmOptions(config *neutrino.Config, cfg *Config) error {
 	}
 
 	apertureProxyURL := wasmGlobalString("lndWasmApertureProxyURL")
-	apertureClientKey := wasmGlobalString(
-		"lndWasmApertureClientPrivateKey",
-	)
-
 	return wasmneutrino.ApplyBrowserOptions(config, wasmneutrino.BrowserConfig{
-		DataDir:                  "/",
-		DBFilename:               "neutrino.sqlite",
-		DNSURL:                   dnsURL,
-		ChainParams:              cfg.ActiveNetParams.Params,
-		ApertureProxyURL:         apertureProxyURL,
-		ApertureClientPrivateKey: apertureClientKey,
+		DataDir:              "/",
+		DBFilename:           "neutrino.sqlite",
+		DNSURL:               dnsURL,
+		ChainParams:          cfg.ActiveNetParams.Params,
+		ApertureProxyURL:     apertureProxyURL,
+		ApertureClientPubKey: wasmNeutrinoClientPubKey,
+		ApertureSignPayload:  wasmNeutrinoSignPayload,
 	})
 }
 

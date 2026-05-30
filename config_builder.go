@@ -346,7 +346,8 @@ func (d *DefaultWalletImpl) BuildWalletConfig(ctx context.Context,
 	// while the rest of the daemon continues startup.
 	mainChain := d.cfg.Bitcoin
 	var neutrinoCS *neutrino.ChainService
-	if mainChain.Node == "neutrino" {
+	initNeutrinoEarly := initNeutrinoBackendBeforeWallet(d.cfg)
+	if mainChain.Node == "neutrino" && initNeutrinoEarly {
 		neutrinoBackend, neutrinoCleanUp, err := initNeutrinoBackend(
 			ctx, d.cfg, mainChain.ChainDir, blockCache,
 		)
@@ -615,6 +616,25 @@ func (d *DefaultWalletImpl) BuildWalletConfig(ctx context.Context,
 		if lis.MacChan != nil {
 			close(lis.MacChan)
 		}
+	}
+
+	if mainChain.Node == "neutrino" && !initNeutrinoEarly {
+		err := prepareNeutrinoWasmSigner(d.cfg, &walletInitParams)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		neutrinoBackend, neutrinoCleanUp, err := initNeutrinoBackend(
+			ctx, d.cfg, mainChain.ChainDir, blockCache,
+		)
+		if err != nil {
+			err := fmt.Errorf("unable to initialize neutrino "+
+				"backend: %v", err)
+			d.logger.Error(err)
+			return nil, nil, nil, err
+		}
+		cleanUpTasks = append(cleanUpTasks, neutrinoCleanUp)
+		neutrinoCS = neutrinoBackend
 	}
 
 	// With the information parsed from the configuration, create valid
