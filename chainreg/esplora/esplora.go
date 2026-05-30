@@ -420,7 +420,10 @@ func (c *Client) TestMempoolAccept(ctx context.Context, txns []*wire.MsgTx,
 		path += fmt.Sprintf("?maxfeerate=%f", maxFeeRate)
 	}
 
-	resp, err := c.post(ctx, path, string(body), "application/json")
+	// Some public Esplora deployments accept the JSON payload but don't
+	// answer CORS preflight requests for this endpoint. text/plain keeps the
+	// browser request simple while preserving the same JSON body.
+	resp, err := c.post(ctx, path, string(body), "text/plain")
 	if err != nil {
 		return nil, err
 	}
