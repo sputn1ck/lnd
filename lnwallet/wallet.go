@@ -532,6 +532,24 @@ func (l *LightningWallet) Shutdown() error {
 func (l *LightningWallet) PublishTransaction(tx *wire.MsgTx,
 	label string) error {
 
+	publish := func() error {
+		return l.publishTransaction(tx, label)
+	}
+
+	return fn.ElimOption(
+		l.Cfg.PublishInterceptor,
+		publish,
+		func(interceptor PublishInterceptor) error {
+			return interceptor.PublishTransaction(tx, label, publish)
+		},
+	)
+}
+
+// publishTransaction wraps the wallet controller tx publish method with an
+// extra rebroadcaster layer if the sub-system is configured.
+func (l *LightningWallet) publishTransaction(tx *wire.MsgTx,
+	label string) error {
+
 	sendTxToWallet := func() error {
 		return l.WalletController.PublishTransaction(tx, label)
 	}
