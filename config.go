@@ -894,10 +894,20 @@ func DefaultConfig() Config {
 //  3. Load configuration file overwriting defaults with any specified options
 //  4. Parse CLI options and overwrite/add any specified options
 func LoadConfig(interceptor signal.Interceptor) (*Config, error) {
+	return LoadConfigWithArgs(interceptor, os.Args[1:])
+}
+
+// LoadConfigWithArgs loads the lnd configuration using the supplied command
+// line arguments instead of reading from os.Args. Integrated callers can use
+// this to start lnd in-process without mutating process-global arguments.
+func LoadConfigWithArgs(interceptor signal.Interceptor,
+	args []string) (*Config, error) {
+
 	// Pre-parse the command line options to pick up an alternative config
 	// file.
 	preCfg := DefaultConfig()
-	if _, err := flags.Parse(&preCfg); err != nil {
+	preParser := flags.NewParser(&preCfg, flags.Default)
+	if _, err := preParser.ParseArgs(args); err != nil {
 		return nil, err
 	}
 
@@ -957,7 +967,7 @@ func LoadConfig(interceptor signal.Interceptor) (*Config, error) {
 	// Finally, parse the remaining command line options again to ensure
 	// they take precedence.
 	flagParser := flags.NewParser(&cfg, flags.Default)
-	if _, err := flagParser.Parse(); err != nil {
+	if _, err := flagParser.ParseArgs(args); err != nil {
 		return nil, err
 	}
 

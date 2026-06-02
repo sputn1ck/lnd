@@ -7,6 +7,7 @@ import (
 	"github.com/lightningnetwork/lnd/chainreg"
 	"github.com/lightningnetwork/lnd/htlcswitch"
 	"github.com/lightningnetwork/lnd/routing"
+	"github.com/lightningnetwork/lnd/signal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,6 +53,40 @@ func TestConfigToFlatMap(t *testing.T) {
 	require.Equal(t, redactedPassword, result["tor.password"])
 	require.Equal(t, redactedPassword, result["db.etcd.pass"])
 	require.Equal(t, redactedPassword, result["db.postgres.dsn"])
+}
+
+// TestLoadConfigWithArgs asserts integrated callers can load an lnd config
+// from explicit args without relying on os.Args.
+func TestLoadConfigWithArgs(t *testing.T) {
+	interceptor, err := signal.Intercept()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		interceptor.RequestShutdown()
+		<-interceptor.ShutdownChannel()
+	})
+
+	lndDir := t.TempDir()
+	cfg, err := LoadConfigWithArgs(interceptor, []string{
+		"--lnddir=" + lndDir,
+		"--bitcoin.active",
+		"--bitcoin.regtest",
+		"--bitcoin.node=neutrino",
+		"--rpclisten=localhost:0",
+		"--restlisten=localhost:0",
+		"--nolisten",
+		"--nobootstrap",
+		"--no-macaroons",
+		"--protocol.option-scid-alias",
+		"--protocol.zero-conf",
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, lndDir, cfg.LndDir)
+	require.True(t, cfg.Bitcoin.Active)
+	require.True(t, cfg.Bitcoin.RegTest)
+	require.True(t, cfg.ProtocolOptions.ScidAlias())
+	require.True(t, cfg.ProtocolOptions.ZeroConf())
+	require.True(t, cfg.NoMacaroons)
 }
 
 // TestSupplyEnvValue tests that the supplyEnvValue function works as

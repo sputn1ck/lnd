@@ -802,6 +802,7 @@ func (r *rpcServer) addDeps(ctx context.Context, s *server,
 		genInvoiceFeatures, genAmpInvoiceFeatures,
 		s.getNodeAnnouncement, s.updateAndBroadcastSelfNode, parseAddr,
 		rpcsLog, s.aliasMgr, r.implCfg.AuxDataParser,
+		r.implCfg.InvoiceHopHintProvider,
 		invoiceHtlcModifier,
 	)
 	if err != nil {
@@ -5818,7 +5819,9 @@ func (r *rpcServer) AddInvoice(ctx context.Context,
 		GenAmpInvoiceFeatures: func() *lnwire.FeatureVector {
 			return r.server.featureMgr.Get(feature.SetInvoiceAmp)
 		},
-		GetAlias:   r.server.aliasMgr.GetPeerAlias,
+		GetAlias: r.server.aliasMgr.GetPeerAlias,
+		HopHintProvider: r.server.implCfg.InvoiceHopHintProvider.
+			UnwrapOr(nil),
 		BestHeight: r.server.cc.BestBlockTracker.BestHeight,
 		QueryBlindedRoutes: func(amt lnwire.MilliSatoshi) (
 			[]*route.Route, error) {

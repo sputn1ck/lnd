@@ -71,6 +71,10 @@ type Config struct {
 	// leaves for certain custom channel types.
 	AuxSigner fn.Option[lnwallet.AuxSigner]
 
+	// PublishInterceptor is an optional hook that can wrap transaction
+	// publication from the LightningWallet.
+	PublishInterceptor fn.Option[lnwallet.PublishInterceptor]
+
 	// BlockCache is the main cache for storing block information.
 	BlockCache *blockcache.BlockCache
 
