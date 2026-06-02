@@ -96,6 +96,10 @@ func (notifier *Notifier) notifyStop() {
 // Interceptor contains channels and methods regarding application shutdown
 // and interrupt signals.
 type Interceptor struct {
+	// global records whether this interceptor owns the process-global
+	// OS signal handler guard.
+	global bool
+
 	// interruptChannel is used to receive SIGINT (Ctrl+C) signals.
 	interruptChannel chan os.Signal
 
@@ -122,12 +126,7 @@ func Intercept() (Interceptor, error) {
 		return Interceptor{}, errors.New("intercept already started")
 	}
 
-	channels := Interceptor{
-		interruptChannel:       make(chan os.Signal, 1),
-		shutdownChannel:        make(chan struct{}),
-		shutdownRequestChannel: make(chan struct{}),
-		quit:                   make(chan struct{}),
-	}
+	channels := newInterceptor(true)
 
 	signalsToCatch := []os.Signal{
 		os.Interrupt,
@@ -141,13 +140,37 @@ func Intercept() (Interceptor, error) {
 	return channels, nil
 }
 
+// NewInterceptor starts a shutdown interceptor that is not registered for
+// process OS signals. This is intended for in-process lnd embeddings that may
+// run more than one lnd runtime in the same process while the embedding
+// process owns OS signal handling itself.
+func NewInterceptor() Interceptor {
+	channels := newInterceptor(false)
+	go channels.mainInterruptHandler()
+
+	return channels
+}
+
+// newInterceptor initializes the channels for an Interceptor.
+func newInterceptor(global bool) Interceptor {
+	return Interceptor{
+		global:                 global,
+		interruptChannel:       make(chan os.Signal, 1),
+		shutdownChannel:        make(chan struct{}),
+		shutdownRequestChannel: make(chan struct{}),
+		quit:                   make(chan struct{}),
+	}
+}
+
 // mainInterruptHandler listens for SIGINT (Ctrl+C) signals on the
 // interruptChannel and shutdown requests on the shutdownRequestChannel, and
 // invokes the registered interruptCallbacks accordingly. It also listens for
 // callback registration.
 // It must be run as a goroutine.
 func (c *Interceptor) mainInterruptHandler() {
-	defer atomic.StoreInt32(&started, 0)
+	if c.global {
+		defer atomic.StoreInt32(&started, 0)
+	}
 	// isShutdown is a flag which is used to indicate whether or not
 	// the shutdown signal has already been received and hence any future
 	// attempts to add a new interrupt handler should invoke them
@@ -193,6 +216,10 @@ func (c *Interceptor) mainInterruptHandler() {
 // Listening returns true if the main interrupt handler has been started, and
 // has not been killed.
 func (c *Interceptor) Listening() bool {
+	if !c.global {
+		return c.Alive()
+	}
+
 	// If our started field is not set, we are not yet listening for
 	// interrupts.
 	if atomic.LoadInt32(&started) != 1 {
