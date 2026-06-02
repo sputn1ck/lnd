@@ -32,6 +32,7 @@ import (
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/chainparams"
 	"github.com/lightningnetwork/lnd/chainreg"
+	"github.com/lightningnetwork/lnd/chanacceptor"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/clock"
 	"github.com/lightningnetwork/lnd/fn/v2"
@@ -45,6 +46,7 @@ import (
 	"github.com/lightningnetwork/lnd/kvdb"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/chancloser"
@@ -206,6 +208,19 @@ type AuxComponents struct {
 	// AuxSigner is an optional signer that can be used to sign auxiliary
 	// leaves for certain custom channel types.
 	AuxSigner fn.Option[lnwallet.AuxSigner]
+
+	// PublishInterceptor is an optional hook that can wrap transaction
+	// publication from the LightningWallet.
+	PublishInterceptor fn.Option[lnwallet.PublishInterceptor]
+
+	// ChannelAcceptor is an optional channel acceptor that is registered
+	// with lnd's in-process channel acceptor chain at startup.
+	ChannelAcceptor fn.Option[chanacceptor.ChannelAcceptor]
+
+	// InvoiceHopHintProvider is an optional source of invoice hop hints for
+	// custom channel types that cannot be represented completely in the
+	// standard channel graph.
+	InvoiceHopHintProvider fn.Option[invoicesrpc.HopHintProvider]
 
 	// AuxDataParser is an optional data parser that can be used to parse
 	// auxiliary data for certain custom channel types.
@@ -634,6 +649,7 @@ func (d *DefaultWalletImpl) BuildWalletConfig(ctx context.Context,
 		NeutrinoCS:                  neutrinoCS,
 		AuxLeafStore:                aux.AuxLeafStore,
 		AuxSigner:                   aux.AuxSigner,
+		PublishInterceptor:          aux.PublishInterceptor,
 		ActiveNetParams:             d.cfg.ActiveNetParams,
 		FeeURL:                      d.cfg.FeeURL,
 		Fee: &lncfg.Fee{
@@ -792,6 +808,7 @@ func (d *DefaultWalletImpl) BuildChainControl(
 		CoinSelectionStrategy: walletConfig.CoinSelectionStrategy,
 		AuxLeafStore:          partialChainControl.Cfg.AuxLeafStore,
 		AuxSigner:             partialChainControl.Cfg.AuxSigner,
+		PublishInterceptor:    partialChainControl.Cfg.PublishInterceptor,
 	}
 
 	// The broadcast is already always active for neutrino nodes, so we
@@ -910,6 +927,7 @@ func (d *RPCSignerWalletImpl) BuildChainControl(
 		ChainIO:               walletController,
 		NetParams:             *walletConfig.NetParams,
 		CoinSelectionStrategy: walletConfig.CoinSelectionStrategy,
+		PublishInterceptor:    partialChainControl.Cfg.PublishInterceptor,
 	}
 
 	// We've created the wallet configuration now, so we can finish

@@ -622,6 +622,11 @@ func Main(cfg *Config, lisCfg ListenerCfg, implCfg *ImplementationCfg,
 	} else {
 		multiAcceptor = chanacceptor.NewChainedAcceptor()
 	}
+	implCfg.AuxComponents.ChannelAcceptor.WhenSome(
+		func(acceptor chanacceptor.ChannelAcceptor) {
+			multiAcceptor.AddAcceptor(acceptor)
+		},
+	)
 
 	// Set up the core server which will listen for incoming peer
 	// connections.

@@ -129,6 +129,7 @@ func (s *subRPCServerConfigs) PopulateDependencies(cfg *Config,
 	parseAddr func(addr string) (net.Addr, error),
 	rpcLogger btclog.Logger, aliasMgr *aliasmgr.Manager,
 	auxDataParser fn.Option[AuxDataParser],
+	hopHintProvider fn.Option[invoicesrpc.HopHintProvider],
 	invoiceHtlcModifier *invoices.HtlcModificationInterceptor) error {
 
 	// First, we'll use reflect to obtain a version of the config struct
@@ -280,6 +281,15 @@ func (s *subRPCServerConfigs) PopulateDependencies(cfg *Config,
 			)
 			subCfgValue.FieldByName("GetAlias").Set(
 				reflect.ValueOf(aliasMgr.GetPeerAlias),
+			)
+			var provider invoicesrpc.HopHintProvider
+			hopHintProvider.WhenSome(
+				func(p invoicesrpc.HopHintProvider) {
+					provider = p
+				},
+			)
+			subCfgValue.FieldByName("HopHintProvider").Set(
+				reflect.ValueOf(&provider).Elem(),
 			)
 
 			parseAuxData := func(m proto.Message) error {

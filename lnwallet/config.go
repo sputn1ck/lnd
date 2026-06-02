@@ -2,6 +2,7 @@ package lnwallet
 
 import (
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -10,6 +11,18 @@ import (
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 )
+
+// PublishInterceptor can wrap LightningWallet transaction publication. Custom
+// channel implementations can use this hook to materialize required parent
+// transactions before delegating to publish.
+type PublishInterceptor interface {
+	// PublishTransaction is called before a transaction is published by the
+	// LightningWallet. The publish closure performs the default lnd
+	// publication path and should be called exactly once unless the
+	// interceptor intentionally handles publication itself.
+	PublishTransaction(tx *wire.MsgTx, label string,
+		publish func() error) error
+}
 
 // Config is a struct which houses configuration parameters which modify the
 // behaviour of LightningWallet.
@@ -59,6 +72,11 @@ type Config struct {
 	// passively rebroadcast transactions in the background until they're
 	// detected as being confirmed.
 	Rebroadcaster Rebroadcaster
+
+	// PublishInterceptor is an optional hook that can wrap transaction
+	// publication. It is intended for custom channels whose on-chain spends
+	// require external parent materialization before normal lnd publication.
+	PublishInterceptor fn.Option[PublishInterceptor]
 
 	// CoinSelectionStrategy is the strategy that is used for selecting
 	// coins when funding a transaction.

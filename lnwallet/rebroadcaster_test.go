@@ -8,6 +8,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightningnetwork/lnd/chainntnfs"
+	"github.com/lightningnetwork/lnd/fn/v2"
 	"github.com/lightningnetwork/lnd/lnutils"
 	"github.com/stretchr/testify/require"
 )
@@ -58,6 +59,22 @@ func (m *mockRebroadcaster) Broadcast(tx *wire.MsgTx) error {
 
 func (m *mockRebroadcaster) MarkAsConfirmed(txid chainhash.Hash) {
 	m.confSignal <- struct{}{}
+}
+
+type testPublishInterceptor struct {
+	calls chan string
+}
+
+func (t *testPublishInterceptor) PublishTransaction(_ *wire.MsgTx,
+	_ string, publish func() error) error {
+
+	t.calls <- "before"
+	if err := publish(); err != nil {
+		return err
+	}
+	t.calls <- "after"
+
+	return nil
 }
 
 func assertBroadcasterBypass(t *testing.T, wallet *LightningWallet,
@@ -197,4 +214,37 @@ func TestWalletRebroadcaster(t *testing.T) {
 		)
 		require.NoError(t, err)
 	})
+}
+
+// TestPublishInterceptor asserts that the optional publish interceptor wraps
+// the default publication path without bypassing normal wallet publication.
+func TestPublishInterceptor(t *testing.T) {
+	t.Parallel()
+
+	walletController := &mockWalletController{
+		PublishedTransactions: make(chan *wire.MsgTx, 1),
+	}
+	interceptor := &testPublishInterceptor{
+		calls: make(chan string, 2),
+	}
+	wallet, err := NewLightningWallet(Config{
+		WalletController:   walletController,
+		PublishInterceptor: fn.Some[PublishInterceptor](interceptor),
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, wallet.PublishTransaction(wire.NewMsgTx(2), ""))
+
+	before, err := lnutils.RecvOrTimeout(interceptor.calls, time.Second)
+	require.NoError(t, err)
+	require.Equal(t, "before", *before)
+
+	_, err = lnutils.RecvOrTimeout(
+		walletController.PublishedTransactions, time.Second,
+	)
+	require.NoError(t, err)
+
+	after, err := lnutils.RecvOrTimeout(interceptor.calls, time.Second)
+	require.NoError(t, err)
+	require.Equal(t, "after", *after)
 }

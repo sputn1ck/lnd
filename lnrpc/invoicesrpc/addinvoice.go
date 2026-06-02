@@ -90,6 +90,10 @@ type AddInvoiceConfig struct {
 	// option_scid_alias channels.
 	GetAlias func(lnwire.ChannelID) (lnwire.ShortChannelID, error)
 
+	// HopHintProvider optionally contributes additional hop hints for custom
+	// channel types before stock private-channel hint selection runs.
+	HopHintProvider HopHintProvider
+
 	// BestHeight returns the current best block height that this node is
 	// aware of.
 	BestHeight func() (uint32, error)
@@ -97,6 +101,14 @@ type AddInvoiceConfig struct {
 	// QueryBlindedRoutes can be used to generate a few routes to this node
 	// that can then be used in the construction of a blinded payment path.
 	QueryBlindedRoutes func(lnwire.MilliSatoshi) ([]*route.Route, error)
+}
+
+// HopHintProvider contributes additional invoice hop hints for custom channel
+// types that cannot be represented completely in the stock channel graph.
+type HopHintProvider interface {
+	// HopHints returns additional route hints for an invoice amount.
+	HopHints(context.Context, *SelectHopHintsCfg, lnwire.MilliSatoshi) (
+		[][]zpay32.HopHint, error)
 }
 
 // AddInvoiceData contains the required data to create a new invoice.
@@ -461,6 +473,23 @@ func AddInvoice(ctx context.Context, cfg *AddInvoiceConfig,
 		}
 
 		hopHintsCfg := newSelectHopHintsCfg(cfg, totalHopHints)
+		if cfg.HopHintProvider != nil {
+			hints, err := cfg.HopHintProvider.HopHints(
+				ctx, hopHintsCfg, amtMSat,
+			)
+			if err != nil {
+				return nil, nil, fmt.Errorf("unable to add "+
+					"auxiliary hop hints: %v", err)
+			}
+
+			invoice.RouteHints = append(invoice.RouteHints, hints...)
+			if len(invoice.RouteHints) > maxHopHints {
+				return nil, nil, fmt.Errorf("number of routing "+
+					"hints must not exceed maximum of %v",
+					maxHopHints)
+			}
+		}
+
 		hopHints, err := PopulateHopHints(
 			hopHintsCfg, amtMSat, invoice.RouteHints,
 		)
