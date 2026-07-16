@@ -71,8 +71,9 @@ type Config struct {
 	// 32-byte ChannelID.
 	GetAlias func(lnwire.ChannelID) (lnwire.ShortChannelID, error)
 
-	// HopHintProvider optionally contributes additional hop hints for custom
-	// channel types before stock private-channel hint selection runs.
+	// HopHintProvider optionally contributes additional hop hints for
+	// custom channel types before stock private-channel hint selection
+	// runs.
 	HopHintProvider HopHintProvider
 
 	// ParseAuxData is a function that can be used to parse the auxiliary

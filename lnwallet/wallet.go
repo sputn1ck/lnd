@@ -540,7 +540,9 @@ func (l *LightningWallet) PublishTransaction(tx *wire.MsgTx,
 		l.Cfg.PublishInterceptor,
 		publish,
 		func(interceptor PublishInterceptor) error {
-			return interceptor.PublishTransaction(tx, label, publish)
+			return interceptor.PublishTransaction(
+				tx, label, publish,
+			)
 		},
 	)
 }

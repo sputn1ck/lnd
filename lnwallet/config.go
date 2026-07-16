@@ -75,7 +75,8 @@ type Config struct {
 
 	// PublishInterceptor is an optional hook that can wrap transaction
 	// publication. It is intended for custom channels whose on-chain spends
-	// require external parent materialization before normal lnd publication.
+	// require external parent materialization before normal lnd
+	// publication.
 	PublishInterceptor fn.Option[PublishInterceptor]
 
 	// CoinSelectionStrategy is the strategy that is used for selecting

@@ -90,8 +90,9 @@ type AddInvoiceConfig struct {
 	// option_scid_alias channels.
 	GetAlias func(lnwire.ChannelID) (lnwire.ShortChannelID, error)
 
-	// HopHintProvider optionally contributes additional hop hints for custom
-	// channel types before stock private-channel hint selection runs.
+	// HopHintProvider optionally contributes additional hop hints for
+	// custom channel types before stock private-channel hint selection
+	// runs.
 	HopHintProvider HopHintProvider
 
 	// BestHeight returns the current best block height that this node is
@@ -481,14 +482,17 @@ func AddInvoice(ctx context.Context, cfg *AddInvoiceConfig,
 			)
 			if err != nil {
 				return nil, nil, fmt.Errorf("unable to add "+
-					"auxiliary hop hints: %v", err)
+					"auxiliary hop hints: %w", err)
 			}
 
-			invoice.RouteHints = append(invoice.RouteHints, hints...)
+			invoice.RouteHints = append(
+				invoice.RouteHints, hints...,
+			)
 			if len(invoice.RouteHints) > maxHopHints {
-				return nil, nil, fmt.Errorf("number of routing "+
-					"hints must not exceed maximum of %v",
-					maxHopHints)
+				return nil, nil, fmt.Errorf(
+					"routing hint count exceeds "+
+						"maximum of %v", maxHopHints,
+				)
 			}
 		}
 
