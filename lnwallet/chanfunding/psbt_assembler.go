@@ -1,6 +1,7 @@
 package chanfunding
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -241,6 +242,21 @@ func (i *PsbtIntent) Verify(packet *psbt.Packet, skipFinalize bool) error {
 	if packet == nil {
 		return fmt.Errorf("PSBT is nil")
 	}
+	if !i.shouldPublish && skipFinalize &&
+		(i.State == PsbtFinalized ||
+			i.State == PsbtFundingTxCompiled) {
+
+		equal, err := psbtPacketsEqual(packet, i.PendingPsbt)
+		if err != nil {
+			return fmt.Errorf("compare replayed PSBT: %w", err)
+		}
+		if !equal {
+			return fmt.Errorf("replayed PSBT differs from " +
+				"verified PSBT")
+		}
+
+		return nil
+	}
 	if i.State != PsbtOutputKnown {
 		return fmt.Errorf("invalid state. got %v expected %v", i.State,
 			PsbtOutputKnown)
@@ -306,6 +322,22 @@ func (i *PsbtIntent) Verify(packet *psbt.Packet, skipFinalize bool) error {
 
 	i.State = PsbtVerified
 	return nil
+}
+
+func psbtPacketsEqual(a, b *psbt.Packet) (bool, error) {
+	if a == nil || b == nil {
+		return a == b, nil
+	}
+
+	var aBytes, bBytes bytes.Buffer
+	if err := a.Serialize(&aBytes); err != nil {
+		return false, fmt.Errorf("serialize replayed PSBT: %w", err)
+	}
+	if err := b.Serialize(&bBytes); err != nil {
+		return false, fmt.Errorf("serialize verified PSBT: %w", err)
+	}
+
+	return bytes.Equal(aBytes.Bytes(), bBytes.Bytes()), nil
 }
 
 // Finalize makes sure the final PSBT that is given to the intent is fully valid

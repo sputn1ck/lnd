@@ -399,6 +399,28 @@ func TestPsbtVerify(t *testing.T) {
 					return fmt.Errorf("expected state to " +
 						"be finalized")
 				}
+				if err := i.Verify(p, true); err != nil {
+					return fmt.Errorf("replay finalized "+
+						"PSBT: %w", err)
+				}
+				i.State = PsbtFundingTxCompiled
+				if err := i.Verify(p, true); err != nil {
+					return fmt.Errorf("replay compiled "+
+						"PSBT: %w", err)
+				}
+				changed := *p
+				changed.UnsignedTx = p.UnsignedTx.Copy()
+				changed.UnsignedTx.LockTime++
+				err := i.Verify(&changed, true)
+				if err == nil {
+					return fmt.Errorf("replay succeeded")
+				}
+				if !strings.Contains(err.Error(),
+					"differs from verified PSBT") {
+
+					return fmt.Errorf("unexpected changed "+
+						"replay error: %w", err)
+				}
 
 				select {
 				case <-i.PsbtReady:
