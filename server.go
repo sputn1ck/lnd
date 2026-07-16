@@ -1730,14 +1730,15 @@ func newServer(ctx context.Context, cfg *Config, listenAddrs []net.Addr,
 		EnableUpfrontShutdown:         cfg.EnableUpfrontShutdown,
 		MaxAnchorsCommitFeeRate: chainfee.SatPerKVByte(
 			s.cfg.MaxCommitFeeRateAnchors * 1000).FeePerKWeight(),
-		DeleteAliasEdge:      deleteAliasEdge,
-		AliasManager:         s.aliasMgr,
-		IsSweeperOutpoint:    s.sweeper.IsSweeperOutpoint,
-		AuxFundingController: implCfg.AuxFundingController,
-		AuxSigner:            implCfg.AuxSigner,
-		AuxResolver:          implCfg.AuxContractResolver,
-		AuxChannelNegotiator: implCfg.AuxChannelNegotiator,
-		ShutdownScript:       peer.ChooseAddr(script),
+		DeleteAliasEdge:       deleteAliasEdge,
+		AliasManager:          s.aliasMgr,
+		IsSweeperOutpoint:     s.sweeper.IsSweeperOutpoint,
+		AuxFundingController:  implCfg.AuxFundingController,
+		ChannelActivationGate: implCfg.ChannelActivationGate,
+		AuxSigner:             implCfg.AuxSigner,
+		AuxResolver:           implCfg.AuxContractResolver,
+		AuxChannelNegotiator:  implCfg.AuxChannelNegotiator,
+		ShutdownScript:        peer.ChooseAddr(script),
 	})
 	if err != nil {
 		return nil, err

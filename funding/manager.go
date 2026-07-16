@@ -566,6 +566,10 @@ type Config struct {
 	// the funding process.
 	AuxFundingController fn.Option[AuxFundingController]
 
+	// ChannelActivationGate is an optional external activation gate for
+	// standard or custom channels.
+	ChannelActivationGate fn.Option[ChannelActivationGate]
+
 	// AuxSigner is an optional signer that can be used to sign auxiliary
 	// leaves for certain custom channel types.
 	AuxSigner fn.Option[lnwallet.AuxSigner]
@@ -1096,6 +1100,13 @@ func (f *Manager) advanceFundingState(channel *channeldb.OpenChannel,
 
 	defer f.wg.Done()
 
+	err := f.waitForChannelActivation(channel, pendingChanID)
+	if err != nil {
+		log.Errorf("Unable to activate ChannelPoint(%v): %v",
+			channel.FundingOutpoint, err)
+		return
+	}
+
 	// If the channel is still pending we must wait for the funding
 	// transaction to confirm.
 	if channel.IsPending {
@@ -1165,6 +1176,28 @@ func (f *Manager) advanceFundingState(channel *channeldb.OpenChannel,
 			return
 		}
 	}
+}
+
+// waitForChannelActivation lets an external lifecycle hold a channel before
+// lnd marks a zero-conf channel open or sends channel_ready. The funding state
+// goroutine can safely block here without stalling the reservation coordinator.
+func (f *Manager) waitForChannelActivation(channel *channeldb.OpenChannel,
+	pendingChanID PendingChanID) error {
+
+	ctx, cancel := lnutils.ContextFromQuit(f.quit)
+	defer cancel()
+
+	return fn.MapOptionZ(
+		f.cfg.ChannelActivationGate,
+		func(gate ChannelActivationGate) error {
+			req := ChannelActivationRequest{
+				PendingChanID:   pendingChanID,
+				FundingOutpoint: channel.FundingOutpoint,
+			}
+
+			return gate.WaitForActivation(ctx, req)
+		},
+	)
 }
 
 // stateStep advances the confirmed channel one step in the funding state

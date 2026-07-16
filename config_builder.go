@@ -206,6 +206,10 @@ type AuxComponents struct {
 	// the funding process.
 	AuxFundingController fn.Option[funding.AuxFundingController]
 
+	// ChannelActivationGate can delay channel activation until an external
+	// channel lifecycle is ready.
+	ChannelActivationGate fn.Option[funding.ChannelActivationGate]
+
 	// AuxSigner is an optional signer that can be used to sign auxiliary
 	// leaves for certain custom channel types.
 	AuxSigner fn.Option[lnwallet.AuxSigner]
@@ -797,6 +801,7 @@ func (d *DefaultWalletImpl) BuildChainControl(
 
 	// Create, and start the lnwallet, which handles the core payment
 	// channel logic, and exposes control via proxy state machines.
+	publishInterceptor := partialChainControl.Cfg.PublishInterceptor
 	lnWalletConfig := lnwallet.Config{
 		Database:              partialChainControl.Cfg.ChanStateDB,
 		Notifier:              partialChainControl.ChainNotifier,
@@ -809,7 +814,7 @@ func (d *DefaultWalletImpl) BuildChainControl(
 		CoinSelectionStrategy: walletConfig.CoinSelectionStrategy,
 		AuxLeafStore:          partialChainControl.Cfg.AuxLeafStore,
 		AuxSigner:             partialChainControl.Cfg.AuxSigner,
-		PublishInterceptor:    partialChainControl.Cfg.PublishInterceptor,
+		PublishInterceptor:    publishInterceptor,
 	}
 
 	// The broadcast is already always active for neutrino nodes, so we
@@ -918,6 +923,7 @@ func (d *RPCSignerWalletImpl) BuildChainControl(
 
 	// Create, and start the lnwallet, which handles the core payment
 	// channel logic, and exposes control via proxy state machines.
+	publishInterceptor := partialChainControl.Cfg.PublishInterceptor
 	lnWalletConfig := lnwallet.Config{
 		Database:              partialChainControl.Cfg.ChanStateDB,
 		Notifier:              partialChainControl.ChainNotifier,
@@ -928,7 +934,7 @@ func (d *RPCSignerWalletImpl) BuildChainControl(
 		ChainIO:               walletController,
 		NetParams:             *walletConfig.NetParams,
 		CoinSelectionStrategy: walletConfig.CoinSelectionStrategy,
-		PublishInterceptor:    partialChainControl.Cfg.PublishInterceptor,
+		PublishInterceptor:    publishInterceptor,
 	}
 
 	// We've created the wallet configuration now, so we can finish

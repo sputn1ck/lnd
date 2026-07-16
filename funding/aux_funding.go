@@ -1,7 +1,10 @@
 package funding
 
 import (
+	"context"
+
 	"github.com/btcsuite/btcd/chainhash/v2"
+	"github.com/btcsuite/btcd/wire/v2"
 	"github.com/lightningnetwork/lnd/fn/v2"
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwallet"
@@ -48,4 +51,21 @@ type AuxFundingController interface {
 	// In this state, we've received the commitment sig from the remote
 	// party, so we are safe to broadcast the funding transaction.
 	ChannelFinalized(PendingChanID) error
+}
+
+// ChannelActivationGate can delay channel activation until an external
+// lifecycle has made the channel safe to use. It is separate from the
+// AuxFundingController so custom funding implementations can use both.
+type ChannelActivationGate interface {
+	// WaitForActivation blocks until lnd may mark the channel open and send
+	// channel_ready.
+	WaitForActivation(context.Context, ChannelActivationRequest) error
+}
+
+// ChannelActivationRequest is the stable channel identity available at the
+// activation boundary. The pending ID covers the pre-funding interval and the
+// outpoint covers recovery after funding negotiation.
+type ChannelActivationRequest struct {
+	PendingChanID   PendingChanID
+	FundingOutpoint wire.OutPoint
 }
