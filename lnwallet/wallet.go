@@ -487,9 +487,13 @@ func (l *LightningWallet) Startup() error {
 		return nil
 	}
 
-	// Start the underlying wallet controller.
-	if err := l.Start(); err != nil {
-		return err
+	// An embedding process may already own the wallet controller's
+	// lifecycle. In that case, only start LightningWallet's reservation
+	// handler and optional rebroadcaster.
+	if !l.Cfg.ExternallyManagedWalletController {
+		if err := l.Start(); err != nil {
+			return err
+		}
 	}
 
 	if l.Cfg.Rebroadcaster != nil {
@@ -513,10 +517,12 @@ func (l *LightningWallet) Shutdown() error {
 		return nil
 	}
 
-	// Signal the underlying wallet controller to shutdown, waiting until
-	// all active goroutines have been shutdown.
-	if err := l.Stop(); err != nil {
-		return err
+	// Leave an externally managed wallet controller running for the owner
+	// that started it. LightningWallet still stops all workers it owns.
+	if !l.Cfg.ExternallyManagedWalletController {
+		if err := l.Stop(); err != nil {
+			return err
+		}
 	}
 
 	if l.Cfg.Rebroadcaster != nil && l.Cfg.Rebroadcaster.Started() {

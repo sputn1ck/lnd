@@ -17,6 +17,12 @@ import (
 // NOTE: The passed channeldb, and ChainNotifier should already be fully
 // initialized/started before being passed as a function argument.
 type Config struct {
+	// ExternallyManagedWalletController prevents LightningWallet from
+	// starting or stopping the WalletController. This permits an embedding
+	// process to compose LightningWallet's channel reservation state machine
+	// around a wallet whose lifecycle it already owns.
+	ExternallyManagedWalletController bool
+
 	// Database is a wrapper around a namespace within boltdb reserved for
 	// ln-based wallet metadata. See the 'channeldb' package for further
 	// information.
