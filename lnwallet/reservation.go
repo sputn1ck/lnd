@@ -863,6 +863,69 @@ func (r *ChannelReservation) FundingOutpoint() *wire.OutPoint {
 	return &r.partialState.FundingOutpoint
 }
 
+// PendingChanID returns the wire protocol identifier for this reservation.
+// External funding coordinators can use it to validate the funding output
+// derived by each endpoint without taking ownership of the funding state
+// machine.
+func (r *ChannelReservation) PendingChanID() [32]byte {
+	r.RLock()
+	defer r.RUnlock()
+
+	return r.pendingChanID
+}
+
+// FundingOutput returns the output negotiated by this reservation once both
+// channel contributions are known. It is available before the funding
+// transaction is finalized so an external funding coordinator can validate
+// the transaction it is being asked to sign.
+func (r *ChannelReservation) FundingOutput() (*wire.TxOut, error) {
+	r.RLock()
+	defer r.RUnlock()
+
+	if r.ourContribution == nil || r.ourContribution.ChannelConfig == nil {
+		return nil, fmt.Errorf("local channel contribution is unavailable")
+	}
+	if r.theirContribution == nil ||
+		r.theirContribution.ChannelConfig == nil {
+
+		return nil, fmt.Errorf("remote channel contribution is unavailable")
+	}
+
+	localKey := r.ourContribution.MultiSigKey.PubKey
+	remoteKey := r.theirContribution.MultiSigKey.PubKey
+	if localKey == nil || remoteKey == nil {
+		return nil, fmt.Errorf("channel multisig keys are unavailable")
+	}
+
+	var (
+		pkScript []byte
+		err      error
+	)
+	if r.partialState.ChanType.IsTaproot() {
+		pkScript, _, err = input.GenTaprootFundingScript(
+			localKey, remoteKey, int64(r.partialState.Capacity),
+			r.partialState.TapscriptRoot,
+		)
+	} else {
+		var witnessScript []byte
+		witnessScript, err = input.GenMultiSigScript(
+			localKey.SerializeCompressed(),
+			remoteKey.SerializeCompressed(),
+		)
+		if err == nil {
+			pkScript, err = input.WitnessScriptHash(witnessScript)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("derive channel funding script: %w", err)
+	}
+
+	return &wire.TxOut{
+		Value:    int64(r.partialState.Capacity),
+		PkScript: pkScript,
+	}, nil
+}
+
 // SetOurUpfrontShutdown sets the upfront shutdown address on our contribution.
 func (r *ChannelReservation) SetOurUpfrontShutdown(shutdown lnwire.DeliveryAddress) {
 	r.Lock()
