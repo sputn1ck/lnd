@@ -5447,3 +5447,36 @@ func TestChannelReadyUnknownChannelID(t *testing.T) {
 		t, alice, bob, 500000, 0, 1, updateChan, true, nil,
 	)
 }
+
+// TestProcessFundingMsgSync verifies synchronous delivery returns only after
+// the coordinator has run the existing funding-message handler.
+func TestProcessFundingMsgSync(t *testing.T) {
+	t.Parallel()
+
+	var findChannelCalls atomic.Uint64
+	alice, bob := setupFundingManagers(
+		t, func(cfg *Config) {
+			origFindChannel := cfg.FindChannel
+			cfg.FindChannel = func(
+				node *btcec.PublicKey,
+				chanID lnwire.ChannelID,
+			) (*chanstate.OpenChannel, error) {
+
+				findChannelCalls.Add(1)
+
+				return origFindChannel(node, chanID)
+			}
+		},
+	)
+	t.Cleanup(func() {
+		tearDownFundingManagers(t, alice, bob)
+	})
+
+	msg := &lnwire.ChannelReady{
+		ChanID:                 lnwire.ChannelID{1, 2, 3},
+		NextPerCommitmentPoint: bobAddr.IdentityKey,
+	}
+	err := alice.fundingMgr.ProcessFundingMsgSync(t.Context(), msg, bob)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, findChannelCalls.Load())
+}

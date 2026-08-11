@@ -309,8 +309,9 @@ type InitFundingMsg struct {
 // fundingMsg is sent by the ProcessFundingMsg function and packages a
 // funding-specific lnwire.Message along with the lnpeer.Peer that sent it.
 type fundingMsg struct {
-	msg  lnwire.Message
-	peer lnpeer.Peer
+	msg      lnwire.Message
+	peer     lnpeer.Peer
+	complete chan struct{}
 }
 
 // pendingChannels is a map instantiated per-peer which tracks all active
@@ -1048,28 +1049,7 @@ func (f *Manager) reservationCoordinator() {
 	for {
 		select {
 		case fmsg := <-f.fundingMsgs:
-			switch msg := fmsg.msg.(type) {
-			case *lnwire.OpenChannel:
-				f.fundeeProcessOpenChannel(fmsg.peer, msg)
-
-			case *lnwire.AcceptChannel:
-				f.funderProcessAcceptChannel(fmsg.peer, msg)
-
-			case *lnwire.FundingCreated:
-				f.fundeeProcessFundingCreated(fmsg.peer, msg)
-
-			case *lnwire.FundingSigned:
-				f.funderProcessFundingSigned(fmsg.peer, msg)
-
-			case *lnwire.ChannelReady:
-				f.handleChannelReady(fmsg.peer, msg)
-
-			case *lnwire.Warning:
-				f.handleWarningMsg(fmsg.peer, msg)
-
-			case *lnwire.Error:
-				f.handleErrorMsg(fmsg.peer, msg)
-			}
+			f.processFundingMsg(fmsg)
 		case req := <-f.fundingRequests:
 			f.handleInitFundingMsg(req)
 
@@ -1079,6 +1059,37 @@ func (f *Manager) reservationCoordinator() {
 		case <-f.quit:
 			return
 		}
+	}
+}
+
+// processFundingMsg handles one message on the funding coordinator goroutine
+// and signals synchronous callers only after the handler has returned.
+func (f *Manager) processFundingMsg(fmsg *fundingMsg) {
+	if fmsg.complete != nil {
+		defer close(fmsg.complete)
+	}
+
+	switch msg := fmsg.msg.(type) {
+	case *lnwire.OpenChannel:
+		f.fundeeProcessOpenChannel(fmsg.peer, msg)
+
+	case *lnwire.AcceptChannel:
+		f.funderProcessAcceptChannel(fmsg.peer, msg)
+
+	case *lnwire.FundingCreated:
+		f.fundeeProcessFundingCreated(fmsg.peer, msg)
+
+	case *lnwire.FundingSigned:
+		f.funderProcessFundingSigned(fmsg.peer, msg)
+
+	case *lnwire.ChannelReady:
+		f.handleChannelReady(fmsg.peer, msg)
+
+	case *lnwire.Warning:
+		f.handleWarningMsg(fmsg.peer, msg)
+
+	case *lnwire.Error:
+		f.handleErrorMsg(fmsg.peer, msg)
 	}
 }
 
@@ -1423,9 +1434,48 @@ func (f *Manager) advancePendingChannelState(channel *chanstate.OpenChannel,
 // allowing it to handle the lnwire.Message.
 func (f *Manager) ProcessFundingMsg(msg lnwire.Message, peer lnpeer.Peer) {
 	select {
-	case f.fundingMsgs <- &fundingMsg{msg, peer}:
+	case f.fundingMsgs <- &fundingMsg{msg: msg, peer: peer}:
 	case <-f.quit:
 		return
+	}
+}
+
+// ProcessFundingMsgSync sends a message to the funding coordinator and waits
+// until its existing handler has returned. This is useful when an external
+// durable transport must not acknowledge an inbound message before lnd has
+// persisted the resulting funding state.
+//
+// The context controls admission to the coordinator. Once admitted, the call
+// waits for processing or manager shutdown so cancellation cannot create an
+// ambiguous partially handled delivery.
+func (f *Manager) ProcessFundingMsgSync(ctx context.Context,
+	msg lnwire.Message, peer lnpeer.Peer) error {
+
+	complete := make(chan struct{})
+	fmsg := &fundingMsg{
+		msg:      msg,
+		peer:     peer,
+		complete: complete,
+	}
+
+	select {
+	case f.fundingMsgs <- fmsg:
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-f.quit:
+		return ErrFundingManagerShuttingDown
+	}
+
+	select {
+	case <-complete:
+		return nil
+	case <-f.quit:
+		select {
+		case <-complete:
+			return nil
+		default:
+			return ErrFundingManagerShuttingDown
+		}
 	}
 }
 
