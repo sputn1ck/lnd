@@ -1102,6 +1102,17 @@ func (c *ChannelArbitrator) stateStep(
 		log.Infof("ChannelArbitrator(%v): force closing "+
 			"chan", c.cfg.ChanPoint)
 
+		// An embedding runtime may need to publish an externally managed
+		// funding transaction before lnd can safely spend it. Run this
+		// barrier before ForceCloseChan removes the link or marks the
+		// commitment broadcast, so a failure can be retried from this state.
+		if c.cfg.BeforeCommitmentPublish != nil {
+			err := c.cfg.BeforeCommitmentPublish(c.cfg.ChanPoint)
+			if err != nil {
+				return StateError, closeTx, err
+			}
+		}
+
 		// Now that we have all the actions decided for the set of
 		// HTLC's, we'll broadcast the commitment transaction, and
 		// signal the link to exit.
@@ -2948,14 +2959,20 @@ func (c *ChannelArbitrator) channelAttendant(bestHeight int32,
 			log.Infof("ChannelArbitrator(%v): received force "+
 				"close request", c.cfg.ChanPoint)
 
-			if c.state != StateDefault {
+			resumeBroadcast := closeReq.resume &&
+				c.state == StateBroadcastCommit
+			if c.state != StateDefault && !resumeBroadcast {
 				select {
 				case closeReq.closeTx <- nil:
 				case <-c.quit:
 				}
 
+				var closeErr error
+				if !closeReq.resume {
+					closeErr = errAlreadyForceClosed
+				}
 				select {
-				case closeReq.errResp <- errAlreadyForceClosed:
+				case closeReq.errResp <- closeErr:
 				case <-c.quit:
 				}
 
